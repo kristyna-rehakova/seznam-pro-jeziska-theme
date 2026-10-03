@@ -279,7 +279,7 @@ function memberCard(m) {
     'aria-label="' + label + '">' +
     avatar(m, 48) + '<span class="mi"><span class="nm">' + esc(m.name) +
     (m.isMe ? ' <span class="badge mine">ty</span>' : '') +
-    (m.isChild ? ' <span class="badge gold">dítě</span>' : '') + '</span>' +
+    '</span>' +
     '<span class="ct">' + m.giftCount + ' ' +
       plural(m.giftCount, 'přání', 'přání', 'přání') + '</span></span>' +
     '<span class="arrow">›</span></button>';
