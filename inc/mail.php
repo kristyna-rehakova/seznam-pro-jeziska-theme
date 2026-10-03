@@ -1,0 +1,66 @@
+<?php
+/**
+ * Seznam pro Ježíška – e-maily
+ *
+ * Posílá se přes wp_mail(). Adresáta zná jen tenhle soubor – vlastník
+ * dárku se nikdy nedozví, že nějaký e-mail odešel, ani komu.
+ */
+if (!defined('ABSPATH')) exit;
+
+/** E-mail člověka, nebo prázdno (dětské profily e-mail nemají). */
+function spj_person_email($person_id) {
+    $p = spj_person($person_id);
+    if (!$p || !$p->wp_user_id) return '';
+    $u = get_userdata($p->wp_user_id);
+    return $u ? $u->user_email : '';
+}
+
+/** Odeslání s jednotnou hlavičkou. Chybu jen zalogujeme, akce proběhne dál. */
+function spj_send_mail($to, $subject, $body) {
+    if (!$to) return false;
+    $headers = ['Content-Type: text/plain; charset=UTF-8'];
+    $sent = wp_mail($to, $subject, $body, $headers);
+    if (!$sent && defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('[Seznam pro Ježíška] E-mail se nepodařilo odeslat: ' . $subject);
+    }
+    return $sent;
+}
+
+/** Vlastník upravil dárek, který má někdo rezervovaný. */
+function spj_mail_reserver_about_edit($gift) {
+    $r = spj_reservation_of($gift->id);
+    if (!$r) return;
+    $to = spj_person_email($r->reserver_id);
+    if (!$to) return;
+
+    spj_send_mail(
+        $to,
+        'Rezervovaný dárek byl upraven',
+        "Dobrý den,\n\n" .
+        "dárek „{$gift->name}“, který máte rezervovaný, byl upraven. " .
+        "Zkontrolujte si prosím aktuální údaje v aplikaci Seznam pro Ježíška.\n\n" .
+        home_url('/') . "\n\n🎄"
+    );
+}
+
+/** Vlastník smaže dárek, který má někdo rezervovaný. */
+function spj_mail_reserver_about_delete($gift) {
+    $r = spj_reservation_of($gift->id);
+    if (!$r) return;
+    $to = spj_person_email($r->reserver_id);
+    if (!$to) return;
+
+    spj_send_mail(
+        $to,
+        'Rezervovaný dárek byl odstraněn',
+        "Dobrý den,\n\n" .
+        "dárek „{$gift->name}“, který jste měli rezervovaný, byl odstraněn ze seznamu.\n\n" .
+        home_url('/') . "\n\n🎄"
+    );
+}
+
+/** Odesílatel: ať e-maily nechodí z wordpress@domena. */
+function spj_mail_from_name($name) {
+    return 'Seznam pro Ježíška';
+}
+add_filter('wp_mail_from_name', 'spj_mail_from_name');
