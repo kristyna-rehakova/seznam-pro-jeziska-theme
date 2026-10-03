@@ -133,7 +133,7 @@ function spj_act_admin_create_user($a) {
     $id = spj_create_account_person($user_id, sanitize_text_field($name), $avatar, $group);
     if (!$id) return new WP_Error('spj_db', 'Profil se nepodařilo založit.', ['status' => 500]);
 
-    spj_mail_new_account($user_id, sanitize_text_field($name));
+    spj_mail_new_account($user_id);
 
     return spj_user_dto(spj_person($id));
 }
