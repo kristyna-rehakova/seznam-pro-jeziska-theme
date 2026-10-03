@@ -58,10 +58,11 @@ function spj_mail_reserver_about_edit($gift) {
     spj_send_mail(
         $to,
         'Rezervovaný dárek byl upraven',
-        "Dobrý den,\n\n" .
-        "dárek „{$gift->name}“, který máte rezervovaný, byl upraven. " .
-        "Zkontrolujte si prosím aktuální údaje v aplikaci Seznam pro Ježíška.\n\n" .
-        home_url('/') . "\n\n🎄"
+        "Ahojky,\n\n" .
+        "dárek „{$gift->name}“, který máš rezervovaný, byl upraven. " .
+        "Mrkni se prosím na jeho aktuální údaje.\n\n" .
+        home_url('/') . "\n\n" .
+        "Ježíšek 🎄"
     );
 }
 
@@ -75,9 +76,10 @@ function spj_mail_reserver_about_delete($gift) {
     spj_send_mail(
         $to,
         'Rezervovaný dárek byl odstraněn',
-        "Dobrý den,\n\n" .
-        "dárek „{$gift->name}“, který jste měli rezervovaný, byl odstraněn ze seznamu.\n\n" .
-        home_url('/') . "\n\n🎄"
+        "Ahojky,\n\n" .
+        "dárek „{$gift->name}“, který máš rezervovaný, byl odstraněn ze seznamu.\n\n" .
+        home_url('/') . "\n\n" .
+        "Ježíšek 🎄"
     );
 }
 
