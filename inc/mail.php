@@ -59,8 +59,6 @@ function spj_mail_reserver_about_delete($gift) {
     );
 }
 
-/** Odesílatel: ať e-maily nechodí z wordpress@domena. */
-function spj_mail_from_name($name) {
-    return 'Seznam pro Ježíška';
-}
-add_filter('wp_mail_from_name', 'spj_mail_from_name');
+/* Jméno a adresu odesílatele téma schválně nenastavuje — řeší to plugin
+   WP Change Email Sender. Kdyby téma sahalo na filtr wp_mail_from_name,
+   potichu by přebilo, co je nastavené tam. */
