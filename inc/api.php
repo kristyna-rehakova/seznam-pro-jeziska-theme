@@ -37,7 +37,6 @@ function spj_actions() {
         'deleteGift'           => 'spj_act_delete_gift',
         // rodina
         'familyGroups'         => 'spj_act_family_groups',
-        'familyMembers'        => 'spj_act_family_members',
         'familyTree'           => 'spj_act_family_tree',
         'memberGifts'          => 'spj_act_member_gifts',
         // rezervace
@@ -274,34 +273,35 @@ function spj_act_family_groups($a) {
     return array_values(spj_family_groups());
 }
 
-function spj_act_family_members($a) {
-    $p = spj_require_person();
-    if (is_wp_error($p)) return $p;
-
-    $rows = spj_family_others($p);
-    usort($rows, function ($x, $y) { return strcoll($x->name, $y->name); });
-
-    $out = [];
-    foreach ($rows as $r) $out[] = spj_member_row($r);
-    return $out;
-}
-
+/**
+ * Rodina rozdělená do skupin.
+ *
+ * @param bool $a[0] zařadit i přihlášeného uživatele. Přehled ho chce vidět
+ *                   (ať se člověk najde mezi svými), stránka Rodina ne –
+ *                   tam se prochází seznamy ostatních.
+ */
 function spj_act_family_tree($a) {
     $p = spj_require_person();
     if (is_wp_error($p)) return $p;
 
     $rows = spj_family_others($p);
+    if (!empty($a[0])) $rows[] = $p;
     usort($rows, function ($x, $y) { return strcoll($x->name, $y->name); });
 
-    $groups = spj_family_groups();
+    $row = function ($r) use ($p) {
+        $out = spj_member_row($r);
+        $out['isMe'] = ((int) $r->id === (int) $p->id);
+        return $out;
+    };
+
     $tree   = [];
     $placed = [];
 
-    foreach ($groups as $g) {
+    foreach (spj_family_groups() as $g) {
         $members = [];
         foreach ($rows as $r) {
             if ($r->family_group === $g) {
-                $members[] = spj_member_row($r);
+                $members[] = $row($r);
                 $placed[(int) $r->id] = true;
             }
         }
@@ -310,7 +310,7 @@ function spj_act_family_tree($a) {
 
     $rest = [];
     foreach ($rows as $r) {
-        if (empty($placed[(int) $r->id])) $rest[] = spj_member_row($r);
+        if (empty($placed[(int) $r->id])) $rest[] = $row($r);
     }
     if ($rest) $tree[] = ['name' => 'Bez skupiny', 'members' => $rest];
 

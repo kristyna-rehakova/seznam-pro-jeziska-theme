@@ -6,7 +6,7 @@ Primary Branch: main
 Update URI: https://github.com/kristyna-rehakova/seznam-pro-jeziska-theme
 Description: Soukromý rodinný seznam vánočních dárků. Vlastní tabulky pro dárky a rezervace, přihlášení a e-maily přes WordPress. Informace o tom, kdo dárek rezervoval, neopustí server. Nasazení přes Git Updater.
 Author: Seznam pro Ježíška
-Version: 0.2.2
+Version: 0.3.0
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
@@ -202,6 +202,9 @@ main{max-width:1080px; margin:0 auto; padding:20px 16px calc(var(--nav-h) + 32px
 .member{display:flex; align-items:center; gap:14px; padding:16px; cursor:pointer; text-align:left;
   width:100%; border:1px solid var(--line); background:#fff; border-radius:var(--r); box-shadow:var(--sh); transition:.15s}
 .member:hover{border-color:var(--gold-line); transform:translateY(-1px)}
+/* vlastní karta na Přehledu – jemně odlišená */
+.member.me{background:linear-gradient(145deg,#FFFDF8 0%, var(--gold-050) 100%);
+  border-color:var(--gold-line)}
 .member .mi{display:flex; flex-direction:column; min-width:0}
 .member .nm{font-family:Georgia,serif; font-size:1.08rem}
 .member .ct{color:var(--muted); font-size:.87rem}

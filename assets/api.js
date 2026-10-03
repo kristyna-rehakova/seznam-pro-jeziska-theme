@@ -65,8 +65,7 @@ const Api = {
 
   /* --- rodina --- */
   familyGroups:  ()     => call('familyGroups'),
-  familyMembers: ()     => call('familyMembers'),
-  familyTree:    ()     => call('familyTree'),
+  familyTree:    (withMe) => call('familyTree', [!!withMe]),
   memberGifts:   (id)   => call('memberGifts', [id]),
 
   /* --- rezervace --- */

@@ -269,16 +269,38 @@ const addSquare = '<button class="addsq" data-act="newGift" aria-label="Přidat 
   '<span class="pl">＋</span><span class="tx">Přidat</span></button>';
 
 function memberCard(m) {
-  return '<button class="member" data-act="openMember" data-id="' + m.id + '" ' +
-    'aria-label="Seznam přání: ' + esc(m.name) + '">' +
+  // Vlastní karta vede na Moje přání — na cizí seznam sebe sama se jít nedá.
+  const act = m.isMe
+    ? 'data-act="nav" data-view="mine"'
+    : 'data-act="openMember" data-id="' + m.id + '"';
+  const label = m.isMe ? 'Moje přání' : 'Seznam přání: ' + esc(m.name);
+
+  return '<button class="member' + (m.isMe ? ' me' : '') + '" ' + act + ' ' +
+    'aria-label="' + label + '">' +
     avatar(m, 48) + '<span class="mi"><span class="nm">' + esc(m.name) +
+    (m.isMe ? ' <span class="badge mine">ty</span>' : '') +
     (m.isChild ? ' <span class="badge gold">dítě</span>' : '') + '</span>' +
     '<span class="ct">' + m.giftCount + ' ' +
       plural(m.giftCount, 'přání', 'přání', 'přání') + '</span></span>' +
     '<span class="arrow">›</span></button>';
 }
 
-function homeView(user, myCount, resCount, members) {
+/* Rozdělení rodiny do skupin. Používá se na Přehledu i na stránce Rodina,
+   ať vypadají stejně. Prázdné skupiny se tu nevypisují – na Přehledu by
+   zbytečně natahovaly stránku. */
+function familyGroupsBlock(tree, showEmpty) {
+  return tree.map(gr => {
+    if (!gr.members.length && !showEmpty) return '';
+    return '<div class="sect"><h2>' + esc(gr.name) + '</h2><span class="ln"></span>' +
+        '<span class="small muted">' + gr.members.length + ' ' +
+        plural(gr.members.length, 'člen', 'členové', 'členů') + '</span></div>' +
+      (gr.members.length
+        ? '<div class="grid">' + gr.members.map(memberCard).join('') + '</div>'
+        : '<p class="small muted" style="margin:0">Zatím tu nikdo není.</p>');
+  }).join('');
+}
+
+function homeView(user, myCount, resCount, tree) {
   return '' +
     '<div class="hero"><span class="orn">✦</span>' +
       '<p>Do Vánoc zbývá ještě chvilka — ať má Ježíšek přehled.</p></div>' +
@@ -294,8 +316,7 @@ function homeView(user, myCount, resCount, members) {
       '<button class="btn" data-act="newGift">＋ Přidat přání</button>' +
       '<button class="btn ghost" data-act="nav" data-view="family">👨‍👩‍👧 Seznamy rodiny</button>' +
     '</div>' +
-    '<div class="sect"><h2>Rodina</h2><span class="ln"></span></div>' +
-    '<div class="grid">' + members.map(memberCard).join('') + '</div>';
+    familyGroupsBlock(tree, false);
 }
 
 /* Jedna stránka pro vlastní seznam i pro seznamy dětí, které uživatel
@@ -339,14 +360,7 @@ function familyView(tree) {
   return '' +
     '<div class="pagehead"><div class="t"><h1>Rodina</h1>' +
       '<div class="sub">Vyber člena rodiny a podívej se na jeho seznam.</div></div></div>' +
-    tree.map(gr =>
-      '<div class="sect"><h2>' + esc(gr.name) + '</h2><span class="ln"></span>' +
-        '<span class="small muted">' + gr.members.length + ' ' +
-        plural(gr.members.length, 'člen', 'členové', 'členů') + '</span></div>' +
-      (gr.members.length
-        ? '<div class="grid">' + gr.members.map(memberCard).join('') + '</div>'
-        : '<p class="small muted" style="margin:0">Zatím tu nikdo není.</p>')
-    ).join('') +
+    familyGroupsBlock(tree, true) +
     (anyone ? '' : '<div style="margin-top:18px">' +
       emptyBox('👨‍👩‍👧', 'Žádní další členové', 'Další účty může vytvořit administrátor.') + '</div>');
 }

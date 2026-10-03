@@ -106,10 +106,10 @@ async function render() {
   let body = '';
   try {
     if (state.view === 'home') {
-      const [gifts, res, members] = await Promise.all([
-        Api.myGifts(), Api.myReservations(), Api.familyMembers()
+      const [gifts, res, tree] = await Promise.all([
+        Api.myGifts(), Api.myReservations(), Api.familyTree(true)
       ]);
-      body = V.homeView(u, gifts.length, res.length, members);
+      body = V.homeView(u, gifts.length, res.length, tree);
     } else if (state.view === 'mine') {
       const wards = await Api.myWards();
       // Kdyby vybrané dítě zmizelo (admin ho smazal), spadneme na vlastní seznam.
