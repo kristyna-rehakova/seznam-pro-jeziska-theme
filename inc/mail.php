@@ -26,6 +26,28 @@ function spj_send_mail($to, $subject, $body) {
     return $sent;
 }
 
+/**
+ * Nový účet. Heslo se e-mailem zásadně neposílá — předá ho ten, kdo účet
+ * zakládal. Dětské profily e-mail nemají, takže se jich to netýká.
+ */
+function spj_mail_new_account($wp_user_id, $name) {
+    $u = get_userdata($wp_user_id);
+    if (!$u || !$u->user_email) return;
+
+    spj_send_mail(
+        $u->user_email,
+        'Máš účet v Seznamu pro Ježíška 🎄',
+        "Ahoj {$name},\n\n" .
+        "v rodinném seznamu vánočních dárků ti byl vytvořen účet.\n\n" .
+        "Adresa: " . home_url('/') . "\n" .
+        "Přihlašovací e-mail: {$u->user_email}\n\n" .
+        "Heslo ti předá ten, kdo účet zakládal — e-mailem ho z bezpečnostních " .
+        "důvodů neposíláme. Při prvním přihlášení tě aplikace vyzve, aby sis " .
+        "nastavil(a) vlastní.\n\n" .
+        "Pak si můžeš přidat svoje přání a podívat se, co si přejí ostatní.\n\n🎄"
+    );
+}
+
 /** Vlastník upravil dárek, který má někdo rezervovaný. */
 function spj_mail_reserver_about_edit($gift) {
     $r = spj_reservation_of($gift->id);

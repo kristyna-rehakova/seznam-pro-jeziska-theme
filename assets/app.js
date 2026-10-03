@@ -327,6 +327,24 @@ const actions = {
   },
 
   /* profil / avatar */
+  toggleEmoji: el => {
+    const pop = el.closest('form').querySelector('[data-emojipop]');
+    const open = pop.classList.toggle('hidden');
+    if (!open) {
+      const s = pop.querySelector('[data-emojisearch]');
+      s.value = '';
+      filterEmoji(pop, '');
+      s.focus();
+    }
+  },
+  pickEmoji: el => {
+    const form = el.closest('form');
+    const emoji = el.dataset.emoji;
+    form.querySelector('[data-avemoji]').value = emoji;
+    delete form.dataset.avatarImage;          // emoji přebije dřív nahraný obrázek
+    form.querySelector('[data-avprev]').innerHTML = V.esc(emoji);
+    form.querySelector('[data-emojipop]').classList.add('hidden');
+  },
   pickAvatar: el => {
     const wrap = el.closest('form');
     pickImageFile(data => {
@@ -382,6 +400,51 @@ document.addEventListener('click', ev => {
   if (el.tagName === 'A') return;
   ev.preventDefault();
   fn(el, ev);
+});
+
+/* Filtrování emoji podle českého názvu; diakritiku ignorujeme. */
+function filterEmoji(pop, query) {
+  const q = query.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  let total = 0;
+  pop.querySelectorAll('[data-emojigroup]').forEach(group => {
+    let shown = 0;
+    group.querySelectorAll('.emojibtn').forEach(b => {
+      const hit = !q || b.dataset.k.indexOf(q) >= 0;
+      b.classList.toggle('hidden', !hit);
+      if (hit) shown++;
+    });
+    group.classList.toggle('hidden', shown === 0);
+    total += shown;
+  });
+  pop.querySelector('[data-emojinone]').classList.toggle('hidden', total > 0);
+}
+
+document.addEventListener('input', ev => {
+  const s = ev.target.closest && ev.target.closest('[data-emojisearch]');
+  if (s) filterEmoji(s.closest('[data-emojipop]'), s.value);
+});
+
+/* Obrázek vložený ze schránky (Ctrl+V) — záchrana u e-shopů, které
+   serverové načtení blokují. Stačí obrázek na stránce zkopírovat. */
+document.addEventListener('paste', ev => {
+  const form = document.querySelector('[data-form="gift"]');
+  if (!form) return;
+  const items = (ev.clipboardData && ev.clipboardData.items) || [];
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type && items[i].type.indexOf('image/') === 0) {
+      const file = items[i].getAsFile();
+      if (!file) continue;
+      ev.preventDefault();
+      const fr = new FileReader();
+      fr.onload = () => shrink(fr.result, 900, data => {
+        form.elements.image.value = data;
+        form.querySelector('[data-imgprev]').innerHTML = '<img src="' + V.esc(data) + '" alt="">';
+        toast('Obrázek vložen ze schránky. 📋', 'ok');
+      });
+      fr.readAsDataURL(file);
+      return;
+    }
+  }
 });
 
 /* Přepínač typu profilu je <select>, ten potřebuje change, ne click. */
@@ -486,7 +549,7 @@ const forms = {
       });
       toast(kind === 'child'
         ? 'Dětský profil byl vytvořen. 🧒'
-        : 'Účet byl vytvořen. Předej uživateli dočasné heslo.', 'ok');
+        : 'Účet vytvořen, poslali jsme na e-mail pozvánku. Heslo předej zvlášť.', 'ok');
     }
     closeModal();
     await refreshUser();

@@ -4,7 +4,7 @@
  */
 if (!defined('ABSPATH')) exit;
 
-define('SPJ_VERSION', '0.1.0');
+define('SPJ_VERSION', '0.2.0');
 
 function spj_setup() {
     add_theme_support('title-tag');

@@ -381,18 +381,7 @@ function profileView(user) {
     '<div class="pagehead"><div class="t"><h1>Profil</h1>' +
       '<div class="sub">Tvoje jméno, e-mail a avatar.</div></div></div>' +
     '<form class="card pad" data-form="profile" style="margin-bottom:14px">' +
-      '<div class="fld"><label>Avatar</label>' +
-        '<div class="imgpick">' +
-          '<span class="prev" data-avprev>' + avatarInner(user) + '</span>' +
-          '<span class="ctl">' +
-            '<input name="avatar" value="' + (isImg(user.avatar) ? '' : esc(user.avatar || '')) +
-              '" placeholder="Emoji, např. 👩" maxlength="4" data-avemoji>' +
-            '<span class="hint">Zadej emoji, nebo nahraj obrázek. Bez obojího se ' +
-              'zobrazí iniciála.</span>' +
-            '<button class="btn ghost sm" type="button" data-act="pickAvatar">📷 Nahrát obrázek</button>' +
-          '</span>' +
-        '</div>' +
-      '</div>' +
+      avatarField(user) +
       '<div class="fld"><label>Jméno</label>' +
         '<input name="name" value="' + esc(user.name) + '" required maxlength="60"></div>' +
       '<div class="fld"><label>E-mail</label>' +
@@ -414,6 +403,127 @@ function profileView(user) {
 }
 
 function isImg(a) { return a && (String(a).indexOf('data:') === 0 || /^https?:\/\//i.test(a)); }
+
+/* ---------- výběr emoji pro avatar ----------
+   Hledá se podle českých názvů. Není to úplný seznam všech emoji
+   (těch jsou tisíce), ale všechno, co se hodí na avatar. Cokoli dalšího
+   jde pořád napsat nebo vložit do políčka ručně. */
+const EMOJI = [
+  ['Tváře', [
+    ['😀','usmev smich radost'], ['😃','usmev radost'], ['😄','smich'], ['😁','zuby usmev'],
+    ['😊','stydlivy usmev'], ['🙂','usmev'], ['😉','mrknuti'], ['😍','zamilovany laska srdce'],
+    ['🥰','zamilovany laska'], ['😘','polibek pusa'], ['🤗','objeti'], ['🤩','hvezdy nadseni'],
+    ['🥳','oslava party narozeniny'], ['😎','bryle cool slunecni'], ['🤓','bryle nerd'],
+    ['🧐','monokl zkoumani'], ['🤔','premysleni'], ['😴','spanek'], ['😇','andel'],
+    ['🤠','kovboj'], ['🥸','prevlek knir'], ['😺','kocka usmev'], ['🙃','obraceny'],
+    ['😋','mnam jazyk'], ['🤭','hihi'], ['😌','klid spokojenost']
+  ]],
+  ['Lidé', [
+    ['👩','zena'], ['👨','muz'], ['🧑','osoba clovek'], ['👵','babicka stara zena'],
+    ['👴','dedecek stary muz'], ['🧓','senior'], ['👧','holcicka divka dcera'],
+    ['👦','chlapec kluk syn'], ['🧒','dite'], ['👶','miminko'],
+    ['👩‍🦰','zena zrzka'], ['👨‍🦰','muz zrzek'], ['👩‍🦱','zena kudrny'], ['👨‍🦱','muz kudrny'],
+    ['👩‍🦳','zena sediny'], ['👨‍🦳','muz sediny'], ['👩‍🦲','zena bez vlasu'], ['👨‍🦲','muz plesaty'],
+    ['🧔','vousy muz'], ['👱‍♀️','blondyna zena'], ['👱‍♂️','blondak muz'],
+    ['👸','princezna'], ['🤴','princ'], ['🦸‍♀️','hrdinka'], ['🦸‍♂️','hrdina'],
+    ['🧙‍♀️','carodejka'], ['🧙‍♂️','kouzelnik carodej'], ['🧚','vila'], ['👼','andilek']
+  ]],
+  ['Rodina', [
+    ['👨‍👩‍👧','rodina dcera'], ['👨‍👩‍👦','rodina syn'], ['👩‍👧','matka dcera'],
+    ['👨‍👧','otec dcera'], ['👩‍👦','matka syn'], ['👨‍👦','otec syn'],
+    ['💑','par laska'], ['👫','par'], ['👭','kamaradky'], ['👬','kamaradi']
+  ]],
+  ['Povolání a koníčky', [
+    ['👩‍🍳','kucharka vareni'], ['👨‍🍳','kuchar vareni'], ['👩‍⚕️','doktorka sestra'],
+    ['👨‍⚕️','doktor lekar'], ['👩‍🏫','ucitelka'], ['👨‍🏫','ucitel'],
+    ['👩‍🔧','opravarka'], ['👨‍🔧','opravar kutil'], ['👩‍🌾','farmarka zahrada'],
+    ['👨‍🌾','farmar zahrada'], ['👩‍🎨','malirka umeni'], ['👨‍🎨','malir umeni'],
+    ['👩‍💻','programatorka pocitac'], ['👨‍💻','programator pocitac'],
+    ['👩‍🎤','zpevacka'], ['👨‍🎤','zpevak'], ['🕵️','detektiv'], ['🧘','joga klid']
+  ]],
+  ['Vánoce', [
+    ['🎄','stromecek vanoce'], ['🎅','santa jezisek'], ['🤶','pani santova'],
+    ['🧑‍🎄','elf skritek'], ['🦌','sob jelen'], ['⛄','snehulak'], ['☃️','snehulak snih'],
+    ['❄️','vlocka snih zima'], ['🎁','darek'], ['🔔','zvonek'], ['🕯️','svicka'],
+    ['⭐','hvezda'], ['🌟','hvezda zar'], ['✨','trpyt'], ['🎉','oslava konfety'],
+    ['🧦','puncocha ponozka'], ['🍪','susenka'], ['🥛','mleko']
+  ]],
+  ['Zvířata', [
+    ['🐶','pes pejsek'], ['🐕','pes'], ['🐱','kocka'], ['🐈','kocour kocka'],
+    ['🐭','mys'], ['🐹','krecek'], ['🐰','kralik zajic'], ['🦊','liska'],
+    ['🐻','medved'], ['🐼','panda'], ['🐨','koala'], ['🐯','tygr'], ['🦁','lev'],
+    ['🐮','krava'], ['🐷','prase'], ['🐸','zaba'], ['🐵','opice'], ['🐔','slepice'],
+    ['🐧','tucnak'], ['🐦','ptak'], ['🦆','kachna'], ['🦉','sova'],
+    ['🦄','jednorozec'], ['🐝','vcela'], ['🦋','motyl'], ['🐢','zelva'],
+    ['🐙','chobotnice'], ['🐠','ryba'], ['🐬','delfin'], ['🐳','velryba'],
+    ['🦖','dinosaurus'], ['🐺','vlk'], ['🐴','kun'], ['🐑','ovce']
+  ]],
+  ['Záliby a věci', [
+    ['⚽','fotbal mic'], ['🏀','basketbal'], ['🎾','tenis'], ['🎿','lyze'],
+    ['🏂','snowboard'], ['🚴','kolo cyklistika'], ['🏃','beh'], ['🏊','plavani'],
+    ['🎣','ryby rybareni'], ['🎸','kytara'], ['🎹','piano klavir'], ['🎤','mikrofon zpev'],
+    ['🎧','sluchatka hudba'], ['🎮','hry konzole'], ['🎲','kostka hra'], ['♟️','sachy'],
+    ['📚','knihy cteni'], ['📖','kniha'], ['✏️','tuzka psani'], ['🎨','malovani barvy'],
+    ['📷','foto fotoaparat'], ['🎬','film kino'], ['🧩','puzzle'], ['🧶','pleteni vlna'],
+    ['🪡','siti jehla'], ['🌱','zahrada rostlina'], ['🌸','kvetina'], ['🌻','slunecnice'],
+    ['🌲','strom les'], ['🏡','dum domov'], ['🚗','auto'], ['✈️','letadlo'],
+    ['🚂','vlak'], ['⛵','lod'], ['🏔️','hory'], ['🏖️','plaz dovolena'],
+    ['☕','kava'], ['🍵','caj'], ['🍰','dort'], ['🍫','cokolada'], ['🍺','pivo'], ['🍷','vino']
+  ]],
+  ['Srdce a symboly', [
+    ['❤️','srdce cervene laska'], ['🧡','srdce oranzove'], ['💛','srdce zlute'],
+    ['💚','srdce zelene'], ['💙','srdce modre'], ['💜','srdce fialove'],
+    ['🖤','srdce cerne'], ['🤍','srdce bile'], ['💖','srdce trpytive'],
+    ['💝','srdce darek'], ['🌈','duha'], ['☀️','slunce'], ['🌙','mesic'],
+    ['🔥','ohen'], ['🍀','ctyrlistek stesti'], ['👑','koruna'], ['💎','diamant']
+  ]]
+];
+
+/* Diakritiku zahazujeme, ať „žena" najde i psaní bez háčků. */
+function emojiNorm(s) {
+  return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function emojiPicker() {
+  const groups = EMOJI.map(g =>
+    '<div class="emojigroup" data-emojigroup>' +
+      '<div class="emojihead">' + esc(g[0]) + '</div>' +
+      '<div class="emojirow">' + g[1].map(it =>
+        '<button type="button" class="emojibtn" data-act="pickEmoji" ' +
+          'data-emoji="' + esc(it[0]) + '" ' +
+          'data-k="' + esc(emojiNorm(g[0] + ' ' + it[1])) + '" ' +
+          'title="' + esc(it[1]) + '">' + it[0] + '</button>').join('') +
+      '</div>' +
+    '</div>').join('');
+
+  return '<div class="emojipop hidden" data-emojipop>' +
+      '<input type="search" class="emojisearch" data-emojisearch ' +
+        'placeholder="Hledat… např. žena, pes, stromeček" autocomplete="off">' +
+      '<div class="emojigrid" data-emojigrid>' + groups +
+        '<p class="emojinone hidden small muted" data-emojinone>Nic takového tu není. ' +
+          'Zkus jiné slovo, nebo emoji vlož přímo do políčka.</p>' +
+      '</div>' +
+    '</div>';
+}
+
+/* Pole pro avatar — stejné v profilu i v administraci. */
+function avatarField(v) {
+  return '<div class="fld"><label>Avatar</label>' +
+    '<div class="imgpick">' +
+      '<span class="prev" data-avprev>' + avatarInner(v) + '</span>' +
+      '<span class="ctl">' +
+        '<input name="avatar" value="' + (isImg(v.avatar) ? '' : esc(v.avatar || '')) +
+          '" placeholder="Emoji, např. 👩" maxlength="16" data-avemoji>' +
+        '<div class="btnrow">' +
+          '<button class="btn ghost sm" type="button" data-act="toggleEmoji">😀 Vybrat emoji</button>' +
+          '<button class="btn ghost sm" type="button" data-act="pickAvatar">📷 Nahrát obrázek</button>' +
+        '</div>' +
+        emojiPicker() +
+        '<span class="hint">Bez emoji i obrázku se zobrazí iniciála jména.</span>' +
+      '</span>' +
+    '</div>' +
+  '</div>';
+}
 function avatarInner(user) {
   const a = user.avatar || '';
   if (isImg(a)) return '<img src="' + esc(a) + '" alt="">';
@@ -498,6 +608,8 @@ function giftForm(g) {
           '<span class="ctl">' +
             '<button class="btn ghost sm" type="button" data-act="pickImage">📷 Nahrát obrázek</button>' +
             '<button class="btn ghost sm" type="button" data-act="clearImage">✕ Odebrat obrázek</button>' +
+            '<span class="hint">Obrázek jde taky zkopírovat na stránce obchodu ' +
+              'a vložit sem přes Ctrl+V.</span>' +
           '</span></div></div>' +
       '<div class="fld"><label><span class="ord">6.</span>Poznámka</label>' +
         '<textarea name="note" maxlength="500" placeholder="Např. Ideálně černá, velikost M."' +
@@ -537,14 +649,7 @@ function userForm(u, groups, guardians) {
             (isChild ? 'Dítě — seznam bez přihlášení' : 'Účet s přihlášením') + '"></div>') +
       '<div class="fld"><label>Jméno</label>' +
         '<input name="name" value="' + esc(v.name) + '" required maxlength="60"></div>' +
-      '<div class="fld"><label>Avatar</label>' +
-        '<div class="imgpick">' +
-          '<span class="prev" data-avprev>' + avatarInner(v) + '</span>' +
-          '<span class="ctl">' +
-            '<input name="avatar" value="' + (isImg(v.avatar) ? '' : esc(v.avatar || '')) +
-              '" placeholder="Emoji, např. 👩" maxlength="4" data-avemoji>' +
-            '<button class="btn ghost sm" type="button" data-act="pickAvatar">📷 Nahrát obrázek</button>' +
-          '</span></div></div>' +
+      avatarField(v) +
       '<div class="fld"><label>Rodinná skupina</label><select name="familyGroup">' +
         '<option value=""' + (!v.familyGroup ? ' selected' : '') + '>— bez skupiny —</option>' +
         gs.map(g => '<option value="' + esc(g) + '"' +

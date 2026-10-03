@@ -38,9 +38,17 @@ function spj_act_link_preview($a) {
 
     $code = (int) wp_remote_retrieve_response_code($res);
     $html = (string) wp_remote_retrieve_body($res);
-    if ($code >= 400 || $html === '') {
+
+    // Velké e-shopy (Alza, Notino, Lego, Mall…) mají ochranu, která chce
+    // spuštěný JavaScript. Serverové stažení stránky to z principu neobejde.
+    $challenged = (bool) preg_match(
+        '#cf-browser-verification|challenge-platform|Just a moment|captcha#i', $html);
+
+    if ($code >= 400 || $html === '' || $challenged) {
         return ['title' => '', 'price' => null, 'image' => '',
-                'note'  => 'Obchod načtení zablokoval. Vyplň údaje prosím ručně.'];
+                'note'  => 'Obchod ' . ($host ? $host . ' ' : '') . 'automatické načtení ' .
+                           'blokuje. Vyplň údaje ručně — obrázek můžeš na stránce obchodu ' .
+                           'zkopírovat a vložit sem přes Ctrl+V.'];
     }
     $html = substr($html, 0, 2 * 1024 * 1024);
 

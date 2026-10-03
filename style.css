@@ -6,7 +6,7 @@ Primary Branch: main
 Update URI: https://github.com/kristyna-rehakova/seznam-pro-jeziska-theme
 Description: Soukromý rodinný seznam vánočních dárků. Vlastní tabulky pro dárky a rezervace, přihlášení a e-maily přes WordPress. Informace o tom, kdo dárek rezervoval, neopustí server. Nasazení přes Git Updater.
 Author: Seznam pro Ježíška
-Version: 0.1.0
+Version: 0.2.0
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
@@ -292,6 +292,22 @@ main{max-width:1080px; margin:0 auto; padding:20px 16px calc(var(--nav-h) + 32px
   background:var(--paper-2); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:#D8D3CC}
 .imgpick .prev img{width:100%; height:100%; object-fit:cover}
 .imgpick .ctl{flex:1; display:flex; flex-direction:column; gap:8px; min-width:0}
+
+/* ---------- výběr emoji ---------- */
+.emojipop{margin-top:10px; border:1px solid var(--line); border-radius:var(--r-sm);
+  background:#fff; overflow:hidden}
+.emojipop .emojisearch{width:100%; min-height:44px; border:none; border-bottom:1px solid var(--line);
+  border-radius:0; padding:10px 13px; outline:none; background:var(--paper-2)}
+.emojipop .emojisearch:focus{background:#fff; box-shadow:inset 0 -2px 0 var(--red)}
+.emojigrid{max-height:260px; overflow-y:auto; padding:6px 10px 10px}
+.emojihead{font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase;
+  letter-spacing:.5px; margin:10px 0 5px}
+.emojirow{display:grid; grid-template-columns:repeat(auto-fill,minmax(40px,1fr)); gap:3px}
+.emojibtn{width:100%; aspect-ratio:1; border:none; border-radius:10px; background:none;
+  cursor:pointer; font-size:1.35rem; line-height:1; transition:.1s;
+  display:flex; align-items:center; justify-content:center}
+.emojibtn:hover{background:var(--gold-050); transform:scale(1.12)}
+.emojinone{padding:14px 2px}
 
 /* ---------- modál / spodní panel ---------- */
 .modal-back{position:fixed; inset:0; z-index:60; background:rgba(30,35,46,.42); backdrop-filter:blur(2px);
