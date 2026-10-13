@@ -118,6 +118,13 @@ celá rodina, v sekci Nákupy pod každým člověkem a na jeho seznamu přání
 Měnit je smí jen vlastník profilu, poručník u svého dítěte a administrátor
 (`spj_can_edit_sizes()`). Komu to nepřísluší, vidí jen výpis bez formuláře.
 
+Vyplňuje se v **Profilu** — každý si tam najde svou kartu a poručník
+navíc kartu každého svého dítěte. Nejčastější položky jsou připravené
+jako tlačítka na jedno kliknutí (Tričko, Ponožky, Boty…), cokoli dalšího
+se zadá přes „Vlastní". Hodnota je volný text, takže tam může být
+velikost, barva i motiv. Stejný editor je i pod ikonkou 📏 v Nákupech
+a na seznamu člena.
+
 Uložené jsou jako JSON ve sloupci `people.sizes`. Vlastní tabulka by byla
 práce navíc — vždy se čte i zapisuje celá sada a nikdy se podle ní nehledá.
 

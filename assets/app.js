@@ -130,7 +130,15 @@ async function render() {
       const d = await Api.memberGifts(state.memberId);
       body = V.memberView(d.member, d.gifts);
     } else if (state.view === 'profile') {
-      body = V.profileView(u);
+      // Velikosti vyplňuje každý sobě; poručník navíc svým dětem.
+      const wards = await Api.myWards();
+      const people = [{ id: u.id, own: true }].concat(
+        wards.map(w => ({ id: w.id, own: false })));
+      const sizes = await Promise.all(people.map(async p => {
+        const d = await Api.sizes(p.id);
+        return Object.assign(d, { own: p.own });
+      }));
+      body = V.profileView(u, sizes);
     } else if (state.view === 'admin') {
       const [users, gifts] = await Promise.all([
         Api.adminUsers(),
@@ -188,6 +196,24 @@ async function findGift(id) {
 async function shoppingPeople() {
   const groups = await Api.shoppingList();
   return groups.filter(g => g.personId).map(g => ({ id: g.personId, name: g.name }));
+}
+
+/**
+ * Přidá řádek do tabulky velikostí. Když už položka se stejným názvem
+ * existuje, nezakládá druhou — jen skočí do její hodnoty.
+ */
+function addSizeRow(form, label) {
+  const box = form.querySelector('[data-sizerows]');
+
+  if (label) {
+    const same = Array.from(box.querySelectorAll('[data-sizerow]')).find(r =>
+      r.querySelector('.slabel').value.trim().toLowerCase() === label.toLowerCase());
+    if (same) { same.querySelector('.svalue').focus(); return; }
+  }
+
+  box.insertAdjacentHTML('beforeend', V.sizeRow({ label: label || '', value: '' }));
+  const row = box.lastElementChild;
+  row.querySelector(label ? '.svalue' : '.slabel').focus();
 }
 
 async function personName(id) {
@@ -357,22 +383,9 @@ const actions = {
   editSizes: async el => {
     openModal(V.sizesForm(await Api.sizes(Number(el.dataset.id))));
   },
-  addSizeRow: el => {
-    const box = el.closest('form').querySelector('[data-sizerows]');
-    const row = box.querySelector('[data-sizerow]').cloneNode(true);
-    row.querySelectorAll('input').forEach(i => { i.value = ''; });
-    box.appendChild(row);
-    row.querySelector('.slabel').focus();
-  },
-  removeSizeRow: el => {
-    const box = el.closest('[data-sizerows]');
-    const row = el.closest('[data-sizerow]');
-    if (box.querySelectorAll('[data-sizerow]').length > 1) {
-      row.remove();
-    } else {
-      row.querySelectorAll('input').forEach(i => { i.value = ''; });
-    }
-  },
+  addSizeRow: el => addSizeRow(el.closest('form'), ''),
+  addSizePreset: el => addSizeRow(el.closest('form'), el.dataset.label),
+  removeSizeRow: el => { el.closest('[data-sizerow]').remove(); },
   editPurchase: async el => {
     const id = Number(el.dataset.id);
     const groups = await Api.shoppingList();
@@ -665,8 +678,17 @@ const forms = {
       label: r.querySelector('.slabel').value,
       value: r.querySelector('.svalue').value
     }));
-    await Api.setSizes(Number(f.dataset.id), rows);
-    closeModal(); await render();
+    const res = await Api.setSizes(Number(f.dataset.id), rows);
+
+    if (f.closest('#modalRoot')) {
+      closeModal();
+      await render();
+    } else {
+      // V profilu stránku nepřekreslujeme, jen srovnáme řádky podle
+      // serveru (zahodí prázdné) — jinak by to odskočilo nahoru.
+      f.querySelector('[data-sizerows]').innerHTML =
+        (res.sizes || []).map(V.sizeRow).join('');
+    }
     toast('Velikosti byly uloženy. 📏', 'ok');
   },
 

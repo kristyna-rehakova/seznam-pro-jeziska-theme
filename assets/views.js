@@ -473,25 +473,59 @@ function shoppingView(groups) {
 }
 
 /** Úprava tabulky velikostí. */
-function sizesForm(d) {
-  const rows = (d.sizes && d.sizes.length) ? d.sizes : [{ label: '', value: '' }];
-  const row = s =>
-    '<div class="sizerow" data-sizerow>' +
-      '<input class="slabel" placeholder="Co" maxlength="40" value="' + esc(s.label) + '">' +
-      '<input class="svalue" placeholder="Velikost" maxlength="40" value="' + esc(s.value) + '">' +
-      '<button class="iconbtn" type="button" data-act="removeSizeRow" title="Odebrat">✕</button>' +
-    '</div>';
+/* Nejčastější položky jako tlačítka na jedno kliknutí. Cokoli dalšího
+   (bodýčko, barva klobouku…) se zadá přes „Vlastní". */
+const SIZE_PRESETS = [
+  'Tričko', 'Mikina', 'Kalhoty', 'Ponožky', 'Spodní prádlo', 'Boty',
+  'Bunda', 'Čepice', 'Rukavice', 'Pyžamo', 'Oblíbená barva'
+];
 
+function sizeRow(s) {
+  s = s || { label: '', value: '' };
+  return '<div class="sizerow" data-sizerow>' +
+    '<input class="slabel" placeholder="Co" maxlength="40" value="' + esc(s.label) + '">' +
+    '<input class="svalue" placeholder="Velikost, barva, motiv…" maxlength="40" ' +
+      'value="' + esc(s.value) + '">' +
+    '<button class="iconbtn" type="button" data-act="removeSizeRow" title="Odebrat">✕</button>' +
+  '</div>';
+}
+
+/** Vnitřek editoru: řádky + tlačítka pro rychlé přidání. */
+function sizeEditor(sizes) {
+  return '' +
+    '<div data-sizerows>' + (sizes || []).map(sizeRow).join('') + '</div>' +
+    '<div class="quickadd">' +
+      SIZE_PRESETS.map(p => '<button type="button" class="qa" data-act="addSizePreset" ' +
+        'data-label="' + esc(p) + '">＋ ' + esc(p) + '</button>').join('') +
+      '<button type="button" class="qa custom" data-act="addSizeRow">＋ Vlastní</button>' +
+    '</div>';
+}
+
+/** Karta velikostí pro stránku Profil (vlastní i spravované děti). */
+function sizesCard(d) {
+  return '<form class="card pad" data-form="sizes" data-id="' + d.personId + '" ' +
+      'style="margin-bottom:14px">' +
+    '<h2 style="margin-bottom:6px">📏 Tabulka velikostí' +
+      (d.own ? '' : ' — ' + esc(d.name)) + '</h2>' +
+    '<p class="muted small" style="margin-bottom:14px">' +
+      (d.own
+        ? 'Co se hodí vědět, když ti někdo kupuje dárek. Vidí to celá rodina.'
+        : 'Vyplň za ' + esc(d.name) + ' — ostatní pak nemusí volat a ptát se.') +
+    '</p>' +
+    sizeEditor(d.sizes) +
+    '<div class="err small hidden" data-err></div>' +
+    '<button class="btn ghost block" type="submit" style="margin-top:14px">Uložit velikosti</button>' +
+  '</form>';
+}
+
+/** Velikosti v modálu (z ikonky 📏 v Nákupech a na seznamu člena). */
+function sizesForm(d) {
   return '' +
     '<div class="mhead"><h2>Velikosti — ' + esc(d.name) + '</h2>' +
       '<button class="xbtn" data-act="closeModal">✕</button></div>' +
     '<form class="mbody" data-form="sizes" data-id="' + d.personId + '">' +
       (d.canEdit
-        ? '<p class="muted small" style="margin-bottom:14px">Napiš, co se hodí vědět při ' +
-            'nakupování — tričko, boty, kalhoty. Vidí to celá rodina.</p>' +
-          '<div data-sizerows>' + rows.map(row).join('') + '</div>' +
-          '<button class="btn ghost sm" type="button" data-act="addSizeRow" ' +
-            'style="margin-top:4px">＋ Další řádek</button>' +
+        ? sizeEditor(d.sizes) +
           '<div class="err small hidden" data-err></div>' +
           '<div class="btnrow stretch" style="margin-top:16px">' +
             '<button class="btn ghost" type="button" data-act="closeModal">Zrušit</button>' +
@@ -557,10 +591,11 @@ function purchaseForm(p, members, fixed) {
     '</form>';
 }
 
-function profileView(user) {
+/* @param sizes  [{personId, name, sizes, own}] – já a pak děti, které spravuju */
+function profileView(user, sizes) {
   return '' +
     '<div class="pagehead"><div class="t"><h1>Profil</h1>' +
-      '<div class="sub">Tvoje jméno, e-mail a avatar.</div></div></div>' +
+      '<div class="sub">Tvoje jméno, e-mail, avatar a velikosti.</div></div></div>' +
     '<form class="card pad" data-form="profile" style="margin-bottom:14px">' +
       avatarField(user) +
       '<div class="fld"><label>Jméno</label>' +
@@ -571,6 +606,7 @@ function profileView(user) {
       '<div class="err small hidden" data-err></div>' +
       '<button class="btn block" type="submit">Uložit profil</button>' +
     '</form>' +
+    (sizes || []).map(sizesCard).join('') +
     '<form class="card pad" data-form="password" style="margin-bottom:14px">' +
       '<h2 style="margin-bottom:14px">Změna hesla</h2>' +
       '<div class="fld"><label>Současné heslo</label><input name="current" type="password" required></div>' +
@@ -907,7 +943,7 @@ window.V = {
   familyView: familyView, memberView: memberView, profileView: profileView,
   adminView: adminView, giftForm: giftForm, userForm: userForm, resetPwdForm: resetPwdForm,
   confirmDialog: confirmDialog, giftCard: giftCard, purchaseForm: purchaseForm,
-  sizesForm: sizesForm, sizeChips: sizeChips,
+  sizesForm: sizesForm, sizeChips: sizeChips, sizeRow: sizeRow, sizesCard: sizesCard,
   shoppingView: shoppingView, giftDetail: giftDetail
 };
 })();
