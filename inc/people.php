@@ -104,6 +104,61 @@ function spj_gift_count($person_id) {
     );
 }
 
+/**
+ * Tabulka velikostí. Uložená jako JSON ve sloupci people.sizes – vždy se
+ * čte i zapisuje celá, takže vlastní tabulka by byla jen práce navíc.
+ * Není to tajná informace, právě naopak: smysl má jedině sdílená.
+ */
+function spj_sizes($p) {
+    if (!$p || !$p->sizes) return [];
+    $data = json_decode($p->sizes, true);
+    if (!is_array($data)) return [];
+
+    $out = [];
+    foreach ($data as $row) {
+        if (!is_array($row)) continue;
+        $label = trim((string) ($row['label'] ?? ''));
+        $value = trim((string) ($row['value'] ?? ''));
+        if ($label === '' && $value === '') continue;
+        $out[] = ['label' => $label, 'value' => $value];
+    }
+    return $out;
+}
+
+/** Smí 'actor' upravovat velikosti profilu 'target'? */
+function spj_can_edit_sizes($target, $actor) {
+    if (!$target || !$actor) return false;
+    return (int) $target->id === (int) $actor->id
+        || spj_is_admin()
+        || ($target->kind === 'child' && (int) $target->guardian_id === (int) $actor->id);
+}
+
+/** Uloží tabulku velikostí. @return true|WP_Error */
+function spj_save_sizes($target, $rows) {
+    global $wpdb;
+    if (!is_array($rows)) $rows = [];
+    if (count($rows) > 30) {
+        return new WP_Error('spj_invalid', 'Velikostí je moc (max 30 řádků).', ['status' => 400]);
+    }
+
+    $clean = [];
+    foreach ($rows as $row) {
+        if (!is_array($row)) continue;
+        $label = sanitize_text_field(trim((string) ($row['label'] ?? '')));
+        $value = sanitize_text_field(trim((string) ($row['value'] ?? '')));
+        if ($label === '' && $value === '') continue;   // prázdné řádky zahodíme
+        if (mb_strlen($label) > 40 || mb_strlen($value) > 40) {
+            return new WP_Error('spj_invalid', 'Název i hodnota smí mít nejvýš 40 znaků.', ['status' => 400]);
+        }
+        $clean[] = ['label' => $label, 'value' => $value];
+    }
+
+    $wpdb->update(spj_table('people'),
+        ['sizes' => $clean ? wp_json_encode($clean) : null],
+        ['id' => (int) $target->id], ['%s'], ['%d']);
+    return true;
+}
+
 /** Řádek člena rodiny pro klienta (nikdy neobsahuje e-mail ani nic citlivého). */
 function spj_member_row($p) {
     return [
@@ -112,6 +167,7 @@ function spj_member_row($p) {
         'avatar'      => $p->avatar,
         'familyGroup' => $p->family_group,
         'isChild'     => $p->kind === 'child',
+        'sizes'       => spj_sizes($p),
         'giftCount'   => spj_gift_count($p->id),
     ];
 }

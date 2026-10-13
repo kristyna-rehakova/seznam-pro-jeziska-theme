@@ -87,10 +87,15 @@ Uživatelská jména, hesla a e-maily zůstávají v tabulkách WordPressu.
 
 ## Nákupy
 
-Sekce **Nákupy** je osobní nákupní seznam, seskupený podle obdarovaných.
-Sejdou se v něm dva zdroje: dárky rezervované z rodinných seznamů a vlastní
-položky, které v žádném seznamu nejsou (klasicky „koupím taťkovi vrtáky,
-ať na to nezapomenu"). U každé položky je zaškrtávátko *koupeno*.
+Sekce **Nákupy** je osobní nákupní seznam. Vypisuje **celou rodinu**, i ty,
+pro koho zatím nic nemám — slouží zároveň jako rozcestník („komu ještě nic
+nemám") a jako místo, kde jsou vidět velikosti.
+
+U každého člověka se sejdou dva zdroje: dárky rezervované z jeho seznamu
+přání a vlastní položky, které v žádném seznamu nejsou (klasicky „koupím
+taťkovi vrtáky, ať na to nezapomenu"). U každé položky je zaškrtávátko
+*koupeno*. Koupené je vypsané normálně, **nekoupené zašedle** — seznam se
+postupně rozsvěcí, jak věci přibývají.
 
 **Celé je to soukromé pro kupujícího.** Vlastní položky nevidí nikdo jiný
 a obdarovaný se o nich nedozví vůbec nic — jediná cesta k nim vede přes
@@ -99,6 +104,22 @@ takže ostatní dál vidí jen „Rezervováno" a vlastník pořád nic.
 
 Odškrtnutí stránku nepřekresluje, jen pošle `setBought` a přepočítá
 počítadla — jinak by seznam při odškrtávání poskakoval pod rukama.
+
+---
+
+## Tabulka velikostí
+
+Každý profil má volitelnou tabulku velikostí — dvojice *co → velikost*
+(tričko M, boty 38, bodýčko 86). Řeší otázku „kupuju mamce tričko, jakou
+velikost?" bez telefonování.
+
+Na rozdíl od zbytku aplikace **tohle tajné není, naopak**: velikosti vidí
+celá rodina, v sekci Nákupy pod každým člověkem a na jeho seznamu přání.
+Měnit je smí jen vlastník profilu, poručník u svého dítěte a administrátor
+(`spj_can_edit_sizes()`). Komu to nepřísluší, vidí jen výpis bez formuláře.
+
+Uložené jsou jako JSON ve sloupci `people.sizes`. Vlastní tabulka by byla
+práce navíc — vždy se čte i zapisuje celá sada a nikdy se podle ní nehledá.
 
 ---
 

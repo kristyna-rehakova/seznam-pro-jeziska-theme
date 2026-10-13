@@ -6,7 +6,7 @@ Primary Branch: main
 Update URI: https://github.com/kristyna-rehakova/seznam-pro-jeziska-theme
 Description: Soukromý rodinný seznam vánočních dárků. Vlastní tabulky pro dárky a rezervace, přihlášení a e-maily přes WordPress. Informace o tom, kdo dárek rezervoval, neopustí server. Nasazení přes Git Updater.
 Author: Seznam pro Ježíška
-Version: 0.4.0
+Version: 0.5.0
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
@@ -297,13 +297,36 @@ main{max-width:1080px; margin:0 auto; padding:20px 16px calc(var(--nav-h) + 32px
 .imgpick .ctl{flex:1; display:flex; flex-direction:column; gap:8px; min-width:0}
 
 /* ---------- nákupní seznam ---------- */
-.buylist{display:flex; flex-direction:column; gap:8px}
-.buy{display:flex; align-items:flex-start; gap:12px; padding:13px 14px;
-  border:1px solid var(--line); border-radius:var(--r-sm); background:#fff; transition:.15s}
+.buygroups{display:flex; flex-direction:column; gap:10px}
+.buygroup{border:1px solid var(--line); border-radius:var(--r); background:#fff;
+  box-shadow:var(--sh); padding:14px 15px}
+.buyhead{display:flex; align-items:center; gap:12px}
+.buyhead .bh{flex:1; min-width:0}
+.buyhead .bhn{font-family:Georgia,serif; font-size:1.1rem}
+.buyhead .bhc{margin-top:1px}
+.buyhead .iconbtn{width:38px; height:38px; flex:0 0 auto}
+
+/* velikosti */
+.sizes{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 0}
+.size{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--gold-line);
+  background:var(--gold-050); border-radius:999px; padding:3px 10px; font-size:.82rem}
+.size .sl{color:#8A6E1E; font-weight:600}
+.size .sv{color:var(--ink); font-weight:700}
+.sizerow{display:flex; gap:8px; margin-bottom:8px}
+.sizerow input{min-height:44px}
+.sizerow .slabel{flex:1 1 40%}
+.sizerow .svalue{flex:1 1 60%}
+.sizerow .iconbtn{flex:0 0 auto; width:44px; height:44px}
+
+.buylist{display:flex; flex-direction:column; gap:6px; margin-top:12px}
+.buy{display:flex; align-items:flex-start; gap:12px; padding:10px 11px;
+  border:1px solid transparent; border-radius:var(--r-sm); background:var(--paper-2);
+  transition:.15s}
 .buy:hover{border-color:var(--gold-line)}
-.buy.done{background:var(--paper-2); border-color:var(--line)}
-.buy.done .bn{text-decoration:line-through; color:var(--muted)}
-.buy.done .bm,.buy.done .bnote{opacity:.6}
+/* Koupené je černě, nekoupené zašedle – seznam se postupně rozsvěcí. */
+.buy.todo{background:#fff; border-color:var(--line)}
+.buy.todo .bn{color:var(--muted); font-weight:600}
+.buy.todo .bm,.buy.todo .bnote{opacity:.7}
 
 .buychk{flex:0 0 auto; width:24px; height:24px; margin:1px 0 0; min-height:0; padding:0;
   accent-color:var(--ok); cursor:pointer}

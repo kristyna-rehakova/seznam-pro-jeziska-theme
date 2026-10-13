@@ -10,7 +10,7 @@
  */
 if (!defined('ABSPATH')) exit;
 
-define('SPJ_DB_VERSION', '2');
+define('SPJ_DB_VERSION', '3');
 
 /** Názvy tabulek (s prefixem instalace). */
 function spj_table($name) {
@@ -48,6 +48,7 @@ function spj_install_tables() {
         name varchar(60) NOT NULL,
         avatar varchar(255) NOT NULL DEFAULT '',
         family_group varchar(40) NOT NULL DEFAULT '',
+        sizes text DEFAULT NULL,
         guardian_id bigint(20) unsigned DEFAULT NULL,
         created_at datetime NOT NULL,
         PRIMARY KEY  (id),

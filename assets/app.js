@@ -186,10 +186,14 @@ async function findGift(id) {
 
 /* Lidé, pro které jde zapsat vlastní položku: celá rodina včetně dětí. */
 async function shoppingPeople() {
-  const tree = await Api.familyTree();
-  const out = [];
-  tree.forEach(g => g.members.forEach(m => out.push({ id: m.id, name: m.name })));
-  return out;
+  const groups = await Api.shoppingList();
+  return groups.filter(g => g.personId).map(g => ({ id: g.personId, name: g.name }));
+}
+
+async function personName(id) {
+  const groups = await Api.shoppingList();
+  const g = groups.find(x => x.personId === id);
+  return g ? g.name : '';
 }
 
 /* Přepočítá počítadla v hlavičce a u skupin, aniž by se překreslila stránka. */
@@ -339,8 +343,35 @@ const actions = {
       toast(e.message, 'bad');
     }
   },
-  newPurchase: async () => {
-    openModal(V.purchaseForm(null, await shoppingPeople()));
+  newPurchase: async el => {
+    // Pod konkrétním člověkem je příjemce daný, z velkého tlačítka se vybírá.
+    const forId   = el && el.dataset.for ? Number(el.dataset.for) : 0;
+    const forName = el && el.dataset.forname ? el.dataset.forname : '';
+    const fixed = (forId || forName)
+      ? { personId: forId || null, name: forName || await personName(forId) }
+      : null;
+    openModal(V.purchaseForm(null, fixed ? [] : await shoppingPeople(), fixed));
+  },
+
+  /* velikosti */
+  editSizes: async el => {
+    openModal(V.sizesForm(await Api.sizes(Number(el.dataset.id))));
+  },
+  addSizeRow: el => {
+    const box = el.closest('form').querySelector('[data-sizerows]');
+    const row = box.querySelector('[data-sizerow]').cloneNode(true);
+    row.querySelectorAll('input').forEach(i => { i.value = ''; });
+    box.appendChild(row);
+    row.querySelector('.slabel').focus();
+  },
+  removeSizeRow: el => {
+    const box = el.closest('[data-sizerows]');
+    const row = el.closest('[data-sizerow]');
+    if (box.querySelectorAll('[data-sizerow]').length > 1) {
+      row.remove();
+    } else {
+      row.querySelectorAll('input').forEach(i => { i.value = ''; });
+    }
   },
   editPurchase: async el => {
     const id = Number(el.dataset.id);
@@ -629,12 +660,24 @@ const forms = {
     await render();
   },
 
+  sizes: async f => {
+    const rows = Array.from(f.querySelectorAll('[data-sizerow]')).map(r => ({
+      label: r.querySelector('.slabel').value,
+      value: r.querySelector('.svalue').value
+    }));
+    await Api.setSizes(Number(f.dataset.id), rows);
+    closeModal(); await render();
+    toast('Velikosti byly uloženy. 📏', 'ok');
+  },
+
   purchase: async f => {
     const d = fields(f);
+    // Při přidávání pod konkrétním člověkem je příjemce v data atributech.
     const payload = {
-      forPersonId: d.forPersonId ? Number(d.forPersonId) : 0,
-      forName: d.forName, name: d.name, price: d.price, note: d.note,
-      bought: !!d.bought
+      forPersonId: f.dataset.for ? Number(f.dataset.for)
+                                 : (d.forPersonId ? Number(d.forPersonId) : 0),
+      forName: f.dataset.forname || d.forName || '',
+      name: d.name, note: d.note, bought: !!d.bought
     };
     if (f.dataset.id) {
       await Api.updatePurchase(Number(f.dataset.id), payload);

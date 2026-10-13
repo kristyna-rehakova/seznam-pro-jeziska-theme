@@ -74,6 +74,8 @@ const Api = {
 
   /* --- nákupy (soukromé, vidí je jen kupující) --- */
   shoppingList:   ()               => call('shoppingList'),
+  sizes:          (personId)       => call('sizes', [personId]),
+  setSizes:       (personId, rows) => call('setSizes', [personId, rows]),
   setBought:      (kind, id, on)   => call('setBought', [kind, id, !!on]),
   createPurchase: (d)              => call('createPurchase', [d]),
   updatePurchase: (id, d)          => call('updatePurchase', [id, d]),

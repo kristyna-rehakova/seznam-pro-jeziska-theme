@@ -45,6 +45,8 @@ function spj_actions() {
         // nákupy
         'shoppingList'         => 'spj_act_shopping_list',
         'setBought'            => 'spj_act_set_bought',
+        'sizes'                => 'spj_act_sizes',
+        'setSizes'             => 'spj_act_set_sizes',
         'createPurchase'       => 'spj_act_create_purchase',
         'updatePurchase'       => 'spj_act_update_purchase',
         'deletePurchase'       => 'spj_act_delete_purchase',
@@ -337,7 +339,13 @@ function spj_act_member_gifts($a) {
     foreach (spj_gifts_of($id) as $g) $gifts[] = spj_gift_dto($g, $p);
 
     return [
-        'member' => ['id' => (int) $owner->id, 'name' => $owner->name, 'avatar' => $owner->avatar],
+        'member' => [
+            'id'           => (int) $owner->id,
+            'name'         => $owner->name,
+            'avatar'       => $owner->avatar,
+            'sizes'        => spj_sizes($owner),
+            'canEditSizes' => spj_can_edit_sizes($owner, $p),
+        ],
         'gifts'  => $gifts,
     ];
 }
@@ -373,6 +381,18 @@ function spj_act_set_bought($a) {
     if (is_wp_error($p)) return $p;
     $kind = ($a[0] ?? '') === 'purchase' ? 'purchase' : 'reservation';
     return spj_set_bought($kind, (int) ($a[1] ?? 0), !empty($a[2]), $p);
+}
+
+function spj_act_sizes($a) {
+    $p = spj_require_person();
+    if (is_wp_error($p)) return $p;
+    return spj_sizes_of((int) ($a[0] ?? 0), $p);
+}
+
+function spj_act_set_sizes($a) {
+    $p = spj_require_person();
+    if (is_wp_error($p)) return $p;
+    return spj_set_sizes((int) ($a[0] ?? 0), isset($a[1]) && is_array($a[1]) ? $a[1] : [], $p);
 }
 
 function spj_act_create_purchase($a) {
@@ -422,7 +442,13 @@ function spj_act_ward_gifts($a) {
     foreach (spj_gifts_of($child->id) as $g) $gifts[] = spj_gift_dto($g, $p);
 
     return [
-        'child' => ['id' => (int) $child->id, 'name' => $child->name, 'avatar' => $child->avatar],
+        'child' => [
+            'id'           => (int) $child->id,
+            'name'         => $child->name,
+            'avatar'       => $child->avatar,
+            'sizes'        => spj_sizes($child),
+            'canEditSizes' => spj_can_edit_sizes($child, $p),
+        ],
         'gifts' => $gifts,
     ];
 }

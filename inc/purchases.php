@@ -141,7 +141,10 @@ function spj_set_bought($kind, $id, $bought, $person) {
 
 /**
  * Nákupní seznam přihlášeného, seskupený po obdarovaných.
- * Nejdřív lidé z rodiny (abecedně), pak volně zapsaná jména.
+ *
+ * Rodina je vypsaná celá, i když pro někoho zatím nic nemám – je to
+ * zároveň rozcestník („komu ještě nic nemám") a místo, kde jsou vidět
+ * velikosti. Za rodinou následují volně zapsaná jména lidí mimo ni.
  */
 function spj_shopping_list($person) {
     global $wpdb;
@@ -154,12 +157,26 @@ function spj_shopping_list($person) {
     $key = function ($person_id, $name) {
         return $person_id ? 'p' . (int) $person_id : 'n' . mb_strtolower($name);
     };
-    $bucket = function ($k, $name, $person_id) use (&$groups) {
+    $bucket = function ($k, $name, $person_id, $avatar = '', $sizes = []) use (&$groups) {
         if (!isset($groups[$k])) {
-            $groups[$k] = ['name' => $name, 'personId' => $person_id, 'items' => []];
+            $groups[$k] = [
+                'name'     => $name,
+                'personId' => $person_id,
+                'avatar'   => $avatar,
+                'sizes'    => $sizes,
+                'items'    => [],
+            ];
         }
         return $k;
     };
+
+    // --- 0) celá rodina kromě mě, ať je komu nakupovat ---
+    $pe   = spj_table('people');
+    $all  = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $pe WHERE id <> %d", (int) $person->id));
+    foreach (($all ? $all : []) as $m) {
+        $bucket($key($m->id, $m->name), $m->name, (int) $m->id, $m->avatar, spj_sizes($m));
+    }
 
     // --- 1) rezervované dárky ---
     $rows = $wpdb->get_results($wpdb->prepare(
@@ -216,4 +233,28 @@ function spj_shopping_list($person) {
         return strcoll($a['name'], $b['name']);
     });
     return $out;
+}
+
+/** Načtení velikostí jednoho profilu + jestli je přihlášený smí měnit. */
+function spj_sizes_of($person_id, $actor) {
+    $target = spj_person($person_id);
+    if (!$target) return new WP_Error('spj_not_found', 'Profil nebyl nalezen.', ['status' => 404]);
+    return [
+        'personId' => (int) $target->id,
+        'name'     => $target->name,
+        'sizes'    => spj_sizes($target),
+        'canEdit'  => spj_can_edit_sizes($target, $actor),
+    ];
+}
+
+/** Uložení velikostí – smí jen vlastník profilu, poručník nebo admin. */
+function spj_set_sizes($person_id, $rows, $actor) {
+    $target = spj_person($person_id);
+    if (!$target) return new WP_Error('spj_not_found', 'Profil nebyl nalezen.', ['status' => 404]);
+    if (!spj_can_edit_sizes($target, $actor)) {
+        return new WP_Error('spj_forbidden', 'Tyhle velikosti nemůžete měnit.', ['status' => 403]);
+    }
+    $res = spj_save_sizes($target, $rows);
+    if (is_wp_error($res)) return $res;
+    return ['ok' => true, 'sizes' => spj_sizes(spj_person($person_id))];
 }

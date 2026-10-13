@@ -371,9 +371,13 @@ function memberView(member, gifts) {
     '<div class="pagehead">' + avatar(member, 48) + '<div class="t">' +
       '<h1>' + esc(member.name) + '</h1>' +
       '<div class="sub">' + gifts.length + ' ' + plural(gifts.length, 'přání', 'přání', 'přání') +
-      ' · u rezervovaných dárků nikdy neuvidíš, kdo je drží</div></div></div>' +
+      ' · u rezervovaných dárků nikdy neuvidíš, kdo je drží</div></div>' +
+      '<button class="iconbtn" data-act="editSizes" data-id="' + member.id +
+        '" title="Velikosti">📏</button></div>' +
+    sizeChips(member.sizes) +
     (gifts.length
-      ? '<div class="grid">' + gifts.map(g => giftCard(g, 'other')).join('') + '</div>'
+      ? '<div class="grid" style="margin-top:14px">' +
+          gifts.map(g => giftCard(g, 'other')).join('') + '</div>'
       : emptyBox('🎁', 'Seznam je prázdný', member.name + ' si zatím nic nepřeje.'));
 }
 
@@ -383,9 +387,12 @@ function memberView(member, gifts) {
 
 function shoppingItem(it) {
   const id = 'chk-' + it.kind + '-' + it.id;
-  const money = (it.price != null && it.price !== '') ? '<span class="price">' + czk(it.price) + '</span>' : '';
+  const money = (it.price != null && it.price !== '')
+    ? '<span class="price">' + czk(it.price) + '</span>' : '';
 
-  return '<div class="buy' + (it.bought ? ' done' : '') + '">' +
+  // Koupené je vypsané normálně, nekoupené zašedle – seznam se postupně
+  // „rozsvěcí", jak věci přibývají. Proto třída 'todo', ne 'done'.
+  return '<div class="buy' + (it.bought ? '' : ' todo') + '">' +
     '<input type="checkbox" id="' + id + '" class="buychk"' + (it.bought ? ' checked' : '') +
       ' data-act="toggleBought" data-kind="' + it.kind + '" data-id="' + it.id + '">' +
     '<label class="bi" for="' + id + '">' +
@@ -412,10 +419,17 @@ function shoppingItem(it) {
   '</div>';
 }
 
+/** Velikosti jako řádek štítků. Prázdné se nevypisuje vůbec. */
+function sizeChips(sizes) {
+  if (!sizes || !sizes.length) return '';
+  return '<div class="sizes">' + sizes.map(s =>
+    '<span class="size"><span class="sl">' + esc(s.label) + '</span>' +
+    '<span class="sv">' + esc(s.value) + '</span></span>').join('') + '</div>';
+}
+
 function shoppingView(groups) {
-  const items  = groups.reduce((s, g) => s + g.items.length, 0);
-  const todo   = groups.reduce((s, g) => s + g.items.filter(i => !i.bought).length, 0);
-  const addBtn = '<button class="btn" data-act="newPurchase">＋ Přidat položku</button>';
+  const items = groups.reduce((s, g) => s + g.items.length, 0);
+  const todo  = groups.reduce((s, g) => s + g.items.filter(i => !i.bought).length, 0);
 
   const sub = items
     ? (todo
@@ -423,51 +437,113 @@ function shoppingView(groups) {
         : 'Všechno koupeno 🎉 Tenhle seznam vidíš jenom ty.')
     : 'Co komu pořizuješ. Tenhle seznam vidíš jenom ty.';
 
+  const person = g =>
+    '<div class="buyhead">' +
+      avatar({ name: g.name, avatar: g.avatar }, 48) +
+      '<div class="bh">' +
+        '<div class="bhn">' + esc(g.name) + '</div>' +
+        '<div class="bhc small muted">' +
+          (g.items.length
+            ? g.items.filter(i => i.bought).length + ' / ' + g.items.length + ' koupeno'
+            : 'zatím nic') + '</div>' +
+      '</div>' +
+      (g.personId
+        ? '<button class="iconbtn" data-act="editSizes" data-id="' + g.personId +
+            '" title="Velikosti">📏</button>'
+        : '') +
+      '<button class="iconbtn" data-act="newPurchase" ' +
+        'data-for="' + (g.personId || '') + '" ' +
+        'data-forname="' + esc(g.personId ? '' : g.name) + '" ' +
+        'title="Přidat položku">＋</button>' +
+    '</div>' +
+    sizeChips(g.sizes) +
+    (g.items.length ? '<div class="buylist">' + g.items.map(shoppingItem).join('') + '</div>' : '');
+
   return '' +
     '<div class="pagehead"><div class="t"><h1>Nákupy</h1>' +
       '<div class="sub">' + sub + '</div></div>' + addSquare2 +
     '</div>' +
     (groups.length
-      ? groups.map(g =>
-          '<div class="sect"><h2>' + esc(g.name) + '</h2><span class="ln"></span>' +
-            '<span class="small muted">' +
-              g.items.filter(i => i.bought).length + ' / ' + g.items.length + '</span></div>' +
-          '<div class="buylist">' + g.items.map(shoppingItem).join('') + '</div>'
-        ).join('')
+      ? '<div class="buygroups">' + groups.map(g =>
+          '<section class="buygroup">' + person(g) + '</section>').join('') + '</div>'
       : emptyBox('🛒', 'Zatím prázdno',
-          'Rezervuj dárek v sekci Rodina, nebo si sem zapiš něco, co kupuješ mimo seznamy.',
-          '<div class="btnrow stretch" style="margin-top:14px">' +
-            '<button class="btn ghost" data-act="nav" data-view="family">👨‍👩‍👧 Seznamy rodiny</button>' +
-            addBtn + '</div>'));
+          'Až přibydou členové rodiny, objeví se tady.',
+          '<div style="margin-top:14px"><button class="btn" data-act="newPurchase">' +
+            '＋ Přidat položku</button></div>'));
+}
+
+/** Úprava tabulky velikostí. */
+function sizesForm(d) {
+  const rows = (d.sizes && d.sizes.length) ? d.sizes : [{ label: '', value: '' }];
+  const row = s =>
+    '<div class="sizerow" data-sizerow>' +
+      '<input class="slabel" placeholder="Co" maxlength="40" value="' + esc(s.label) + '">' +
+      '<input class="svalue" placeholder="Velikost" maxlength="40" value="' + esc(s.value) + '">' +
+      '<button class="iconbtn" type="button" data-act="removeSizeRow" title="Odebrat">✕</button>' +
+    '</div>';
+
+  return '' +
+    '<div class="mhead"><h2>Velikosti — ' + esc(d.name) + '</h2>' +
+      '<button class="xbtn" data-act="closeModal">✕</button></div>' +
+    '<form class="mbody" data-form="sizes" data-id="' + d.personId + '">' +
+      (d.canEdit
+        ? '<p class="muted small" style="margin-bottom:14px">Napiš, co se hodí vědět při ' +
+            'nakupování — tričko, boty, kalhoty. Vidí to celá rodina.</p>' +
+          '<div data-sizerows>' + rows.map(row).join('') + '</div>' +
+          '<button class="btn ghost sm" type="button" data-act="addSizeRow" ' +
+            'style="margin-top:4px">＋ Další řádek</button>' +
+          '<div class="err small hidden" data-err></div>' +
+          '<div class="btnrow stretch" style="margin-top:16px">' +
+            '<button class="btn ghost" type="button" data-act="closeModal">Zrušit</button>' +
+            '<button class="btn" type="submit">Uložit</button>' +
+          '</div>'
+        : (d.sizes && d.sizes.length
+            ? sizeChips(d.sizes)
+            : '<p class="muted small">Zatím nevyplněno.</p>') +
+          '<div class="btnrow" style="margin-top:16px">' +
+            '<button class="btn ghost block" type="button" data-act="closeModal">Zavřít</button>' +
+          '</div>') +
+    '</form>';
 }
 
 /* Čtvercové tlačítko v hlavičce Nákupů. */
 const addSquare2 = '<button class="addsq" data-act="newPurchase" aria-label="Přidat položku">' +
   '<span class="pl">＋</span><span class="tx">Přidat</span></button>';
 
-/* Formulář vlastní položky (něco, co v žádném seznamu není). */
-function purchaseForm(p, members) {
-  const v  = p || { name: '', price: '', note: '', forPersonId: null, forName: '' };
+/**
+ * Formulář vlastní položky (něco, co v žádném seznamu není).
+ *
+ * @param fixed {name} když se přidává přímo pod konkrétního člověka –
+ *              příjemce je daný a nevybírá se.
+ */
+function purchaseForm(p, members, fixed) {
+  const v  = p || { name: '', note: '', forPersonId: null, forName: '' };
   const ms = members || [];
+  const pinned = fixed ? fixed.name : null;
+
   return '' +
     '<div class="mhead"><h2>' + (p ? 'Upravit položku' : 'Nová položka') + '</h2>' +
       '<button class="xbtn" data-act="closeModal">✕</button></div>' +
-    '<form class="mbody" data-form="purchase" data-id="' + (p ? p.id : '') + '">' +
-      '<div class="fld"><label>Pro koho</label>' +
-        '<select name="forPersonId">' +
-          '<option value="">— někdo mimo rodinu —</option>' +
-          ms.map(m => '<option value="' + m.id + '"' +
-            (v.forPersonId === m.id ? ' selected' : '') + '>' + esc(m.name) + '</option>').join('') +
-        '</select>' +
-        '<input name="forName" value="' + esc(v.forName || '') + '" maxlength="60" ' +
-          'placeholder="Jméno, když není v rodině">' +
-        '<span class="hint">Vyber člena rodiny, nebo napiš jméno do políčka pod tím.</span></div>' +
+    '<form class="mbody" data-form="purchase" data-id="' + (p ? p.id : '') + '" ' +
+        'data-for="' + (fixed && fixed.personId ? fixed.personId : '') + '" ' +
+        'data-forname="' + esc(fixed && !fixed.personId ? fixed.name : '') + '">' +
+
+      (pinned
+        ? '<div class="fld"><label>Pro koho</label>' +
+            '<input value="' + esc(pinned) + '" readonly></div>'
+        : '<div class="fld"><label>Pro koho</label>' +
+            '<select name="forPersonId">' +
+              '<option value="">— někdo mimo rodinu —</option>' +
+              ms.map(m => '<option value="' + m.id + '"' +
+                (v.forPersonId === m.id ? ' selected' : '') + '>' + esc(m.name) + '</option>').join('') +
+            '</select>' +
+            '<input name="forName" value="' + esc(v.forName || '') + '" maxlength="60" ' +
+              'placeholder="Jméno, když není v rodině">' +
+            '<span class="hint">Vyber člena rodiny, nebo napiš jméno do políčka pod tím.</span></div>') +
+
       '<div class="fld"><label>Co</label>' +
         '<input name="name" value="' + esc(v.name) + '" required maxlength="120" ' +
           'placeholder="Např. Vrtáky"></div>' +
-      '<div class="fld"><label>Cena</label>' +
-        '<input name="price" type="number" inputmode="numeric" min="0" step="1" ' +
-          'value="' + esc(v.price == null ? '' : v.price) + '" placeholder="v Kč"></div>' +
       '<div class="fld"><label>Poznámka</label>' +
         '<textarea name="note" maxlength="500" placeholder="Např. Sada do betonu."' +
           '>' + esc(v.note || '') + '</textarea></div>' +
@@ -831,6 +907,7 @@ window.V = {
   familyView: familyView, memberView: memberView, profileView: profileView,
   adminView: adminView, giftForm: giftForm, userForm: userForm, resetPwdForm: resetPwdForm,
   confirmDialog: confirmDialog, giftCard: giftCard, purchaseForm: purchaseForm,
+  sizesForm: sizesForm, sizeChips: sizeChips,
   shoppingView: shoppingView, giftDetail: giftDetail
 };
 })();
