@@ -4,7 +4,7 @@
  */
 if (!defined('ABSPATH')) exit;
 
-define('SPJ_VERSION', '0.3.1');
+define('SPJ_VERSION', '0.4.0');
 
 function spj_setup() {
     add_theme_support('title-tag');
@@ -55,6 +55,7 @@ require get_template_directory() . '/inc/db.php';
 require get_template_directory() . '/inc/people.php';
 require get_template_directory() . '/inc/reservations.php';
 require get_template_directory() . '/inc/gifts.php';
+require get_template_directory() . '/inc/purchases.php';
 require get_template_directory() . '/inc/mail.php';
 require get_template_directory() . '/inc/security.php';
 require get_template_directory() . '/inc/link-preview.php';

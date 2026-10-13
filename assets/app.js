@@ -106,10 +106,12 @@ async function render() {
   let body = '';
   try {
     if (state.view === 'home') {
-      const [gifts, res, tree] = await Promise.all([
-        Api.myGifts(), Api.myReservations(), Api.familyTree(true)
+      const [gifts, shop, tree] = await Promise.all([
+        Api.myGifts(), Api.shoppingList(), Api.familyTree(true)
       ]);
-      body = V.homeView(u, gifts.length, res.length, tree);
+      // Na dlaždici ukazujeme, kolik zbývá koupit – to je ta akční informace.
+      const todo = shop.reduce((s, g) => s + g.items.filter(i => !i.bought).length, 0);
+      body = V.homeView(u, gifts.length, todo, tree);
     } else if (state.view === 'mine') {
       const wards = await Api.myWards();
       // Kdyby vybrané dítě zmizelo (admin ho smazal), spadneme na vlastní seznam.
@@ -122,8 +124,8 @@ async function render() {
       }
     } else if (state.view === 'family') {
       body = V.familyView(await Api.familyTree());
-    } else if (state.view === 'reserved') {
-      body = V.reservedView(await Api.myReservations());
+    } else if (state.view === 'shopping') {
+      body = V.shoppingView(await Api.shoppingList());
     } else if (state.view === 'member') {
       const d = await Api.memberGifts(state.memberId);
       body = V.memberView(d.member, d.gifts);
@@ -165,7 +167,7 @@ async function enterApp() {
 function giftMode() {
   if (state.view === 'admin') return 'admin';
   if (state.view === 'mine') return state.wardId ? 'ward' : 'mine';
-  return 'other';                      // member, reserved
+  return 'other';                      // member
 }
 async function giftList() {
   if (state.view === 'admin') return Api.adminGifts();
@@ -174,12 +176,42 @@ async function giftList() {
       ? (await Api.wardGifts(state.wardId)).gifts
       : Api.myGifts();
   }
-  if (state.view === 'reserved') return Api.myReservations();
+
   if (state.view === 'member') return (await Api.memberGifts(state.memberId)).gifts;
   return [];
 }
 async function findGift(id) {
   return (await giftList()).find(x => x.id === Number(id)) || null;
+}
+
+/* Lidé, pro které jde zapsat vlastní položku: celá rodina včetně dětí. */
+async function shoppingPeople() {
+  const tree = await Api.familyTree();
+  const out = [];
+  tree.forEach(g => g.members.forEach(m => out.push({ id: m.id, name: m.name })));
+  return out;
+}
+
+/* Přepočítá počítadla v hlavičce a u skupin, aniž by se překreslila stránka. */
+function updateShoppingCounts() {
+  const all = Array.from(document.querySelectorAll('.buy'));
+  if (!all.length) return;
+
+  document.querySelectorAll('.buylist').forEach(list => {
+    const rows = Array.from(list.querySelectorAll('.buy'));
+    const done = rows.filter(r => r.classList.contains('done')).length;
+    const label = list.previousElementSibling &&
+      list.previousElementSibling.querySelector('.small.muted');
+    if (label) label.textContent = done + ' / ' + rows.length;
+  });
+
+  const todo = all.filter(r => !r.classList.contains('done')).length;
+  const sub  = document.querySelector('main .pagehead .sub');
+  if (sub) {
+    sub.textContent = todo
+      ? 'Zbývá koupit ' + todo + ' z ' + all.length + '. Tenhle seznam vidíš jenom ty.'
+      : 'Všechno koupeno 🎉 Tenhle seznam vidíš jenom ty.';
+  }
 }
 
 /* ---------- akce (delegace) ---------- */
@@ -289,6 +321,47 @@ const actions = {
         ? 'Načteno z odkazu: ' + got.join(', ') + '.'
         : (r.note || 'Z odkazu se nepodařilo nic načíst.');
     } catch (e) { hint.textContent = e.message; }
+  },
+
+  /* nákupy */
+  toggleBought: async el => {
+    // Zaškrtnutí nepřekresluje stránku – jen potvrdí uložení. Jinak by
+    // seznam při odškrtávání poskakoval pod rukama.
+    const row = el.closest('.buy');
+    const on  = el.checked;
+    row.classList.toggle('done', on);
+    try {
+      await Api.setBought(el.dataset.kind, Number(el.dataset.id), on);
+      updateShoppingCounts();
+    } catch (e) {
+      el.checked = !on;
+      row.classList.toggle('done', !on);
+      toast(e.message, 'bad');
+    }
+  },
+  newPurchase: async () => {
+    openModal(V.purchaseForm(null, await shoppingPeople()));
+  },
+  editPurchase: async el => {
+    const id = Number(el.dataset.id);
+    const groups = await Api.shoppingList();
+    let found = null;
+    groups.forEach(g => g.items.forEach(i => {
+      if (i.kind === 'purchase' && i.id === id) found = i;
+    }));
+    if (!found) { toast('Položka nebyla nalezena.', 'bad'); return; }
+    openModal(V.purchaseForm(found, await shoppingPeople()));
+  },
+  deletePurchase: el => {
+    const id = Number(el.dataset.id);
+    confirmAsk('Smazat položku', 'Opravdu chceš tuhle položku ze seznamu smazat?',
+      'Smazat', true, async () => {
+        try {
+          await Api.deletePurchase(id);
+          closeModal(); await render();
+          toast('Položka byla smazána.', 'ok');
+        } catch (e) { closeModal(); toast(e.message, 'bad'); }
+      });
   },
 
   /* rezervace */
@@ -553,6 +626,25 @@ const forms = {
     }
     closeModal();
     await refreshUser();
+    await render();
+  },
+
+  purchase: async f => {
+    const d = fields(f);
+    const payload = {
+      forPersonId: d.forPersonId ? Number(d.forPersonId) : 0,
+      forName: d.forName, name: d.name, price: d.price, note: d.note,
+      bought: !!d.bought
+    };
+    if (f.dataset.id) {
+      await Api.updatePurchase(Number(f.dataset.id), payload);
+      toast('Položka byla uložena.', 'ok');
+    } else {
+      await Api.createPurchase(payload);
+      toast('Položka byla přidána. 🛒', 'ok');
+    }
+    closeModal();
+    if (state.view !== 'shopping') state.view = 'shopping';
     await render();
   },
 

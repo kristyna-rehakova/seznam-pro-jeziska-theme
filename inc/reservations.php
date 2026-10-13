@@ -62,31 +62,6 @@ function spj_cancel_reservation($gift_id, $person) {
     return spj_gift_dto(spj_gift($g->id), $person);
 }
 
-/** Dárky, které rezervoval přihlášený uživatel. */
-function spj_my_reservations($person) {
-    global $wpdb;
-    $gt = spj_table('gifts');
-    $rt = spj_table('reservations');
-
-    $rows = $wpdb->get_results($wpdb->prepare(
-        "SELECT g.* FROM $gt g
-         INNER JOIN $rt r ON r.gift_id = g.id
-         WHERE r.reserver_id = %d AND g.owner_id <> %d
-         ORDER BY g.priority DESC, g.name ASC",
-        (int) $person->id, (int) $person->id
-    ));
-
-    $out = [];
-    foreach (($rows ? $rows : []) as $g) {
-        $owner = spj_person($g->owner_id);
-        $out[] = array_merge(spj_gift_dto($g, $person), [
-            'ownerName'   => $owner ? $owner->name : '?',
-            'ownerAvatar' => $owner ? $owner->avatar : '',
-        ]);
-    }
-    return $out;
-}
-
 /**
  * Zrušení rezervace administrátorem. Ani admin nesmí sahat na rezervaci
  * svého vlastního dárku – jinak by z chování endpointu poznal, že existuje.

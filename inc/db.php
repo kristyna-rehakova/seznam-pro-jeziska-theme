@@ -10,7 +10,7 @@
  */
 if (!defined('ABSPATH')) exit;
 
-define('SPJ_DB_VERSION', '1');
+define('SPJ_DB_VERSION', '2');
 
 /** Názvy tabulek (s prefixem instalace). */
 function spj_table($name) {
@@ -37,6 +37,7 @@ function spj_install_tables() {
     $people  = spj_table('people');
     $gifts   = spj_table('gifts');
     $res     = spj_table('reservations');
+    $buys    = spj_table('purchases');
 
     // Pozor: dbDelta je háklivý na formát – dvě mezery za PRIMARY KEY,
     // klíče jako KEY (ne INDEX), typy malými písmeny.
@@ -73,10 +74,25 @@ function spj_install_tables() {
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         gift_id bigint(20) unsigned NOT NULL,
         reserver_id bigint(20) unsigned NOT NULL,
+        bought_at datetime DEFAULT NULL,
         created_at datetime NOT NULL,
         PRIMARY KEY  (id),
         UNIQUE KEY gift_id (gift_id),
         KEY reserver_id (reserver_id)
+    ) $charset;
+
+    CREATE TABLE $buys (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        buyer_id bigint(20) unsigned NOT NULL,
+        for_person_id bigint(20) unsigned DEFAULT NULL,
+        for_name varchar(60) NOT NULL DEFAULT '',
+        name varchar(120) NOT NULL,
+        price int(10) unsigned DEFAULT NULL,
+        note varchar(500) NOT NULL DEFAULT '',
+        bought_at datetime DEFAULT NULL,
+        created_at datetime NOT NULL,
+        PRIMARY KEY  (id),
+        KEY buyer_id (buyer_id)
     ) $charset;";
 
     dbDelta($sql);
@@ -91,6 +107,8 @@ function spj_maybe_install() {
 }
 add_action('after_switch_theme', 'spj_install_tables');
 add_action('admin_init', 'spj_maybe_install');
+// I na frontendu – po nahrání nové verze tématu se do wp-adminu nemusí nikdo podívat.
+add_action('init', 'spj_maybe_install');
 
 /** Aktuální čas ve formátu pro DATETIME sloupce. */
 function spj_now() {

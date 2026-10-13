@@ -76,10 +76,29 @@ Tři vlastní tabulky s prefixem instalace (`wp_jezisek_*`):
   a místo toho `guardian_id`. Vlastníkem dárku je vždy řádek odsud, takže
   seznamy dětí fungují stejně jako seznamy dospělých.
 - **gifts** — `owner_id`, název, odkaz, priorita 1–3, cena, obrázek, poznámka.
-- **reservations** — `gift_id` (UNIQUE, jeden dárek = max jedna rezervace)
-  a `reserver_id`.
+- **reservations** — `gift_id` (UNIQUE, jeden dárek = max jedna rezervace),
+  `reserver_id` a `bought_at` (odškrtnuté „koupeno").
+- **purchases** — vlastní položky mimo seznamy přání. `buyer_id`, příjemce
+  buď jako `for_person_id`, nebo volně napsaný `for_name`, a `bought_at`.
 
 Uživatelská jména, hesla a e-maily zůstávají v tabulkách WordPressu.
+
+---
+
+## Nákupy
+
+Sekce **Nákupy** je osobní nákupní seznam, seskupený podle obdarovaných.
+Sejdou se v něm dva zdroje: dárky rezervované z rodinných seznamů a vlastní
+položky, které v žádném seznamu nejsou (klasicky „koupím taťkovi vrtáky,
+ať na to nezapomenu"). U každé položky je zaškrtávátko *koupeno*.
+
+**Celé je to soukromé pro kupujícího.** Vlastní položky nevidí nikdo jiný
+a obdarovaný se o nich nedozví vůbec nic — jediná cesta k nim vede přes
+`buyer_id` přihlášeného. Příznak „koupeno" se do `spj_gift_dto()` nedostane,
+takže ostatní dál vidí jen „Rezervováno" a vlastník pořád nic.
+
+Odškrtnutí stránku nepřekresluje, jen pošle `setBought` a přepočítá
+počítadla — jinak by seznam při odškrtávání poskakoval pod rukama.
 
 ---
 

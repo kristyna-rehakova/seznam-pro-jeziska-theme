@@ -6,7 +6,7 @@ Primary Branch: main
 Update URI: https://github.com/kristyna-rehakova/seznam-pro-jeziska-theme
 Description: Soukromý rodinný seznam vánočních dárků. Vlastní tabulky pro dárky a rezervace, přihlášení a e-maily přes WordPress. Informace o tom, kdo dárek rezervoval, neopustí server. Nasazení přes Git Updater.
 Author: Seznam pro Ježíška
-Version: 0.3.1
+Version: 0.4.0
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
@@ -295,6 +295,29 @@ main{max-width:1080px; margin:0 auto; padding:20px 16px calc(var(--nav-h) + 32px
   background:var(--paper-2); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:#D8D3CC}
 .imgpick .prev img{width:100%; height:100%; object-fit:cover}
 .imgpick .ctl{flex:1; display:flex; flex-direction:column; gap:8px; min-width:0}
+
+/* ---------- nákupní seznam ---------- */
+.buylist{display:flex; flex-direction:column; gap:8px}
+.buy{display:flex; align-items:flex-start; gap:12px; padding:13px 14px;
+  border:1px solid var(--line); border-radius:var(--r-sm); background:#fff; transition:.15s}
+.buy:hover{border-color:var(--gold-line)}
+.buy.done{background:var(--paper-2); border-color:var(--line)}
+.buy.done .bn{text-decoration:line-through; color:var(--muted)}
+.buy.done .bm,.buy.done .bnote{opacity:.6}
+
+.buychk{flex:0 0 auto; width:24px; height:24px; margin:1px 0 0; min-height:0; padding:0;
+  accent-color:var(--ok); cursor:pointer}
+.buy .bi{flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; cursor:pointer}
+.buy .bn{font-weight:600; line-height:1.3}
+.buy .bm{display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:.88rem}
+.buy .bnote{font-size:.85rem; color:var(--muted); white-space:pre-wrap}
+.buy .ba{flex:0 0 auto; display:flex; gap:6px; align-items:center}
+.buy .ba .iconbtn{width:36px; height:36px; font-size:.95rem; text-decoration:none}
+
+@media(max-width:559px){
+  .buy{flex-wrap:wrap}
+  .buy .ba{width:100%; justify-content:flex-end; margin-top:2px}
+}
 
 /* ---------- výběr emoji ---------- */
 .emojipop{margin-top:10px; border:1px solid var(--line); border-radius:var(--r-sm);

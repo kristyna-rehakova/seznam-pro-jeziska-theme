@@ -42,7 +42,12 @@ function spj_actions() {
         // rezervace
         'reserve'              => 'spj_act_reserve',
         'cancelReservation'    => 'spj_act_cancel_reservation',
-        'myReservations'       => 'spj_act_my_reservations',
+        // nákupy
+        'shoppingList'         => 'spj_act_shopping_list',
+        'setBought'            => 'spj_act_set_bought',
+        'createPurchase'       => 'spj_act_create_purchase',
+        'updatePurchase'       => 'spj_act_update_purchase',
+        'deletePurchase'       => 'spj_act_delete_purchase',
         // děti pod správou
         'myWards'              => 'spj_act_my_wards',
         'wardGifts'            => 'spj_act_ward_gifts',
@@ -353,10 +358,40 @@ function spj_act_cancel_reservation($a) {
     return spj_cancel_reservation((int) ($a[0] ?? 0), $p);
 }
 
-function spj_act_my_reservations($a) {
+/* ==================================================================
+   Nákupy – soukromý seznam přihlášeného
+   ================================================================== */
+
+function spj_act_shopping_list($a) {
     $p = spj_require_person();
     if (is_wp_error($p)) return $p;
-    return spj_my_reservations($p);
+    return spj_shopping_list($p);
+}
+
+function spj_act_set_bought($a) {
+    $p = spj_require_person();
+    if (is_wp_error($p)) return $p;
+    $kind = ($a[0] ?? '') === 'purchase' ? 'purchase' : 'reservation';
+    return spj_set_bought($kind, (int) ($a[1] ?? 0), !empty($a[2]), $p);
+}
+
+function spj_act_create_purchase($a) {
+    $p = spj_require_person();
+    if (is_wp_error($p)) return $p;
+    return spj_create_purchase(isset($a[0]) && is_array($a[0]) ? $a[0] : [], $p);
+}
+
+function spj_act_update_purchase($a) {
+    $p = spj_require_person();
+    if (is_wp_error($p)) return $p;
+    return spj_update_purchase((int) ($a[0] ?? 0),
+        isset($a[1]) && is_array($a[1]) ? $a[1] : [], $p);
+}
+
+function spj_act_delete_purchase($a) {
+    $p = spj_require_person();
+    if (is_wp_error($p)) return $p;
+    return spj_delete_purchase((int) ($a[0] ?? 0), $p);
 }
 
 /* ==================================================================

@@ -37,7 +37,7 @@ const NAV = [
   { key: 'home',     ic: '🏠', label: 'Přehled',      short: 'Přehled' },
   { key: 'mine',     ic: '🎁', label: 'Moje přání',   short: 'Přání' },
   { key: 'family',   ic: '👨‍👩‍👧', label: 'Rodina',      short: 'Rodina' },
-  { key: 'reserved', ic: '🔖', label: 'Rezervace',    short: 'Rezervace' },
+  { key: 'shopping', ic: '🛒', label: 'Nákupy',       short: 'Nákupy' },
   { key: 'profile',  ic: '👤', label: 'Profil',       short: 'Profil' },
   { key: 'admin',    ic: '⚙️', label: 'Administrace', short: 'Admin', adminOnly: true }
 ];
@@ -300,7 +300,7 @@ function familyGroupsBlock(tree, showEmpty) {
   }).join('');
 }
 
-function homeView(user, myCount, resCount, tree) {
+function homeView(user, myCount, todoCount, tree) {
   return '' +
     '<div class="hero"><span class="orn">✦</span>' +
       '<p>Do Vánoc zbývá ještě chvilka — ať má Ježíšek přehled.</p></div>' +
@@ -308,9 +308,9 @@ function homeView(user, myCount, resCount, tree) {
       '<button class="tile" data-act="nav" data-view="mine">' +
         '<span class="n">' + myCount + '</span>' +
         '<span class="l">Přání</span><span class="ic">🎁</span></button>' +
-      '<button class="tile" data-act="nav" data-view="reserved">' +
-        '<span class="n">' + resCount + '</span>' +
-        '<span class="l">Rezervace</span><span class="ic">🔖</span></button>' +
+      '<button class="tile" data-act="nav" data-view="shopping">' +
+        '<span class="n">' + todoCount + '</span>' +
+        '<span class="l">Zbývá koupit</span><span class="ic">🛒</span></button>' +
     '</div>' +
     '<div class="btnrow stretch" style="margin-bottom:8px">' +
       '<button class="btn" data-act="newGift">＋ Přidat přání</button>' +
@@ -377,17 +377,108 @@ function memberView(member, gifts) {
       : emptyBox('🎁', 'Seznam je prázdný', member.name + ' si zatím nic nepřeje.'));
 }
 
-function reservedView(gifts) {
+/* ---------- nákupy ----------
+   Soukromý nákupní seznam: rezervované dárky z rodinných seznamů
+   i vlastní položky mimo ně, seskupené po obdarovaných. */
+
+function shoppingItem(it) {
+  const id = 'chk-' + it.kind + '-' + it.id;
+  const money = (it.price != null && it.price !== '') ? '<span class="price">' + czk(it.price) + '</span>' : '';
+
+  return '<div class="buy' + (it.bought ? ' done' : '') + '">' +
+    '<input type="checkbox" id="' + id + '" class="buychk"' + (it.bought ? ' checked' : '') +
+      ' data-act="toggleBought" data-kind="' + it.kind + '" data-id="' + it.id + '">' +
+    '<label class="bi" for="' + id + '">' +
+      '<span class="bn">' + esc(it.name) + '</span>' +
+      '<span class="bm">' +
+        (it.kind === 'reservation'
+          ? '<span class="stars">' + stars(it.priority) + '</span>'
+          : '<span class="badge gold">mimo seznam</span>') +
+        money +
+      '</span>' +
+      (it.note ? '<span class="bnote">' + esc(it.note) + '</span>' : '') +
+    '</label>' +
+    '<span class="ba">' +
+      (it.kind === 'reservation'
+        ? (it.url ? '<a class="iconbtn" href="' + esc(it.url) + '" target="_blank" ' +
+            'rel="noopener noreferrer" title="Otevřít odkaz">🔗</a>' : '') +
+          '<button class="iconbtn" data-act="cancelReserve" data-id="' + it.giftId +
+            '" title="Zrušit rezervaci">✕</button>'
+        : '<button class="iconbtn" data-act="editPurchase" data-id="' + it.id +
+            '" title="Upravit">✏️</button>' +
+          '<button class="iconbtn" data-act="deletePurchase" data-id="' + it.id +
+            '" title="Smazat">🗑</button>') +
+    '</span>' +
+  '</div>';
+}
+
+function shoppingView(groups) {
+  const items  = groups.reduce((s, g) => s + g.items.length, 0);
+  const todo   = groups.reduce((s, g) => s + g.items.filter(i => !i.bought).length, 0);
+  const addBtn = '<button class="btn" data-act="newPurchase">＋ Přidat položku</button>';
+
+  const sub = items
+    ? (todo
+        ? 'Zbývá koupit ' + todo + ' z ' + items + '. Tenhle seznam vidíš jenom ty.'
+        : 'Všechno koupeno 🎉 Tenhle seznam vidíš jenom ty.')
+    : 'Co komu pořizuješ. Tenhle seznam vidíš jenom ty.';
+
   return '' +
-    '<div class="pagehead"><div class="t"><h1>Rezervace</h1>' +
-      '<div class="sub">Dárky, které sháníš ty. Vlastník se o rezervaci nedozví.</div>' +
-    '</div></div>' +
-    (gifts.length
-      ? '<div class="grid">' + gifts.map(g => giftCard(g, 'other')).join('') + '</div>'
-      : emptyBox('🔖', 'Zatím nic nerezervováno',
-          'Projdi seznamy v sekci Rodina a rezervuj dárek, který chceš pořídit.',
-          '<div style="margin-top:14px"><button class="btn" data-act="nav" data-view="family">' +
-          '👨‍👩‍👧 Přejít na Rodinu</button></div>'));
+    '<div class="pagehead"><div class="t"><h1>Nákupy</h1>' +
+      '<div class="sub">' + sub + '</div></div>' + addSquare2 +
+    '</div>' +
+    (groups.length
+      ? groups.map(g =>
+          '<div class="sect"><h2>' + esc(g.name) + '</h2><span class="ln"></span>' +
+            '<span class="small muted">' +
+              g.items.filter(i => i.bought).length + ' / ' + g.items.length + '</span></div>' +
+          '<div class="buylist">' + g.items.map(shoppingItem).join('') + '</div>'
+        ).join('')
+      : emptyBox('🛒', 'Zatím prázdno',
+          'Rezervuj dárek v sekci Rodina, nebo si sem zapiš něco, co kupuješ mimo seznamy.',
+          '<div class="btnrow stretch" style="margin-top:14px">' +
+            '<button class="btn ghost" data-act="nav" data-view="family">👨‍👩‍👧 Seznamy rodiny</button>' +
+            addBtn + '</div>'));
+}
+
+/* Čtvercové tlačítko v hlavičce Nákupů. */
+const addSquare2 = '<button class="addsq" data-act="newPurchase" aria-label="Přidat položku">' +
+  '<span class="pl">＋</span><span class="tx">Přidat</span></button>';
+
+/* Formulář vlastní položky (něco, co v žádném seznamu není). */
+function purchaseForm(p, members) {
+  const v  = p || { name: '', price: '', note: '', forPersonId: null, forName: '' };
+  const ms = members || [];
+  return '' +
+    '<div class="mhead"><h2>' + (p ? 'Upravit položku' : 'Nová položka') + '</h2>' +
+      '<button class="xbtn" data-act="closeModal">✕</button></div>' +
+    '<form class="mbody" data-form="purchase" data-id="' + (p ? p.id : '') + '">' +
+      '<div class="fld"><label>Pro koho</label>' +
+        '<select name="forPersonId">' +
+          '<option value="">— někdo mimo rodinu —</option>' +
+          ms.map(m => '<option value="' + m.id + '"' +
+            (v.forPersonId === m.id ? ' selected' : '') + '>' + esc(m.name) + '</option>').join('') +
+        '</select>' +
+        '<input name="forName" value="' + esc(v.forName || '') + '" maxlength="60" ' +
+          'placeholder="Jméno, když není v rodině">' +
+        '<span class="hint">Vyber člena rodiny, nebo napiš jméno do políčka pod tím.</span></div>' +
+      '<div class="fld"><label>Co</label>' +
+        '<input name="name" value="' + esc(v.name) + '" required maxlength="120" ' +
+          'placeholder="Např. Vrtáky"></div>' +
+      '<div class="fld"><label>Cena</label>' +
+        '<input name="price" type="number" inputmode="numeric" min="0" step="1" ' +
+          'value="' + esc(v.price == null ? '' : v.price) + '" placeholder="v Kč"></div>' +
+      '<div class="fld"><label>Poznámka</label>' +
+        '<textarea name="note" maxlength="500" placeholder="Např. Sada do betonu."' +
+          '>' + esc(v.note || '') + '</textarea></div>' +
+      (p ? '' : '<label class="check"><input type="checkbox" name="bought">' +
+        '<span>Už mám koupeno</span></label>') +
+      '<div class="err small hidden" data-err></div>' +
+      '<div class="btnrow stretch">' +
+        '<button class="btn ghost" type="button" data-act="closeModal">Zrušit</button>' +
+        '<button class="btn" type="submit">' + (p ? 'Uložit' : 'Přidat') + '</button>' +
+      '</div>' +
+    '</form>';
 }
 
 function profileView(user) {
@@ -739,7 +830,7 @@ window.V = {
   mustChangeView: mustChangeView, homeView: homeView, myGiftsView: myGiftsView,
   familyView: familyView, memberView: memberView, profileView: profileView,
   adminView: adminView, giftForm: giftForm, userForm: userForm, resetPwdForm: resetPwdForm,
-  confirmDialog: confirmDialog, giftCard: giftCard,
-  reservedView: reservedView, giftDetail: giftDetail
+  confirmDialog: confirmDialog, giftCard: giftCard, purchaseForm: purchaseForm,
+  shoppingView: shoppingView, giftDetail: giftDetail
 };
 })();

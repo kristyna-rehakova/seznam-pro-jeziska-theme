@@ -71,7 +71,13 @@ const Api = {
   /* --- rezervace --- */
   reserve:           (id) => call('reserve', [id]),
   cancelReservation: (id) => call('cancelReservation', [id]),
-  myReservations:    ()   => call('myReservations'),
+
+  /* --- nákupy (soukromé, vidí je jen kupující) --- */
+  shoppingList:   ()               => call('shoppingList'),
+  setBought:      (kind, id, on)   => call('setBought', [kind, id, !!on]),
+  createPurchase: (d)              => call('createPurchase', [d]),
+  updatePurchase: (id, d)          => call('updatePurchase', [id, d]),
+  deletePurchase: (id)             => call('deletePurchase', [id]),
 
   /* --- děti pod správou --- */
   myWards:        ()        => call('myWards'),
