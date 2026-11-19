@@ -154,6 +154,69 @@ async function render() {
   window.scrollTo(0, 0);
 }
 
+/* ---------- adresy stránek ----------
+   Každý pohled má svou adresu, aby fungovalo tlačítko zpět v prohlížeči
+   a daly se stránky uložit do záložek. Používáme hash (#/rodina/5), ne
+   cestu – nepotřebuje to žádná přepisovací pravidla ve WordPressu, takže
+   se nemá co rozbít při aktualizaci nebo změně nastavení trvalých odkazů. */
+const ROUTES = {
+  home:     'prehled',
+  mine:     'moje-prani',
+  family:   'rodina',
+  member:   'rodina',          // + /id
+  shopping: 'nakupy',
+  profile:  'profil',
+  admin:    'administrace'
+};
+
+function stateToHash() {
+  if (state.view === 'member' && state.memberId) return '#/rodina/' + state.memberId;
+  if (state.view === 'mine' && state.wardId)     return '#/moje-prani/' + state.wardId;
+  if (state.view === 'admin' && state.adminTab === 'gifts') return '#/administrace/darky';
+  return '#/' + (ROUTES[state.view] || 'moje-prani');
+}
+
+/** Přepíše stav podle adresy. Vrací false, když adresa nedává smysl. */
+function applyHash() {
+  const raw = (location.hash || '').replace(/^#\/?/, '');
+  const [first, second] = raw.split('/');
+
+  const byPath = Object.keys(ROUTES).filter(k => k !== 'member');
+  const view = byPath.find(k => ROUTES[k] === first);
+
+  if (first === 'rodina' && second) {
+    state.view = 'member';
+    state.memberId = Number(second) || null;
+    return !!state.memberId;
+  }
+  if (!view) return false;
+
+  state.view = view;
+  state.wardId = (view === 'mine' && second) ? (Number(second) || null) : null;
+  if (view === 'admin') state.adminTab = (second === 'darky') ? 'gifts' : 'users';
+  return true;
+}
+
+/** Přejde na jiný pohled přes adresu – render spustí až událost hashchange. */
+function go(view, opts) {
+  opts = opts || {};
+  state.view = view;
+  if ('memberId' in opts) state.memberId = opts.memberId;
+  if ('wardId' in opts)   state.wardId = opts.wardId;
+  if ('adminTab' in opts) state.adminTab = opts.adminTab;
+
+  const next = stateToHash();
+  if (location.hash === next) { render(); return; }   // stejná adresa → jen překreslit
+  location.hash = next;
+}
+
+window.addEventListener('hashchange', () => {
+  if (state.screen !== 'app') return;
+  closeModal();                 // modál v adrese není, zpět ho musí zavřít
+  if (!applyHash()) { go('mine'); return; }
+  render();
+});
+
 async function refreshUser() {
   // Když se zjištění uživatele nepovede (výpadek, vypršelá session),
   // ukážeme přihlášení místo prázdné stránky.
@@ -163,9 +226,21 @@ async function refreshUser() {
 
 async function enterApp() {
   await refreshUser();
-  if (!state.user) { state.screen = 'login'; }
-  else if (state.user.mustChangePassword) { state.screen = 'mustChange'; }
-  else { state.screen = 'app'; }
+  if (!state.user) {
+    state.screen = 'login';
+  } else if (state.user.mustChangePassword) {
+    state.screen = 'mustChange';
+  } else {
+    state.screen = 'app';
+    // Příchod na konkrétní adresu (záložka, tlačítko zpět) ji respektuje;
+    // jinak začínáme na Mých přáních. replaceState, ať v historii
+    // nevznikne krok navíc hned po načtení.
+    if (!applyHash()) {
+      state.view = 'mine';
+      history.replaceState(null, '',
+        location.pathname + location.search + '#/moje-prani');
+    }
+  }
   await render();
 }
 
@@ -222,20 +297,21 @@ async function personName(id) {
   return g ? g.name : '';
 }
 
-/* Přepočítá počítadla v hlavičce a u skupin, aniž by se překreslila stránka. */
+/* Přepočítá počítadla u lidí i v hlavičce, aniž by se překreslila stránka.
+   Nekoupená položka má třídu 'todo'. */
 function updateShoppingCounts() {
   const all = Array.from(document.querySelectorAll('.buy'));
   if (!all.length) return;
 
-  document.querySelectorAll('.buylist').forEach(list => {
-    const rows = Array.from(list.querySelectorAll('.buy'));
-    const done = rows.filter(r => r.classList.contains('done')).length;
-    const label = list.previousElementSibling &&
-      list.previousElementSibling.querySelector('.small.muted');
-    if (label) label.textContent = done + ' / ' + rows.length;
+  document.querySelectorAll('.buygroup').forEach(group => {
+    const rows  = Array.from(group.querySelectorAll('.buy'));
+    const label = group.querySelector('.bhc');
+    if (!label) return;
+    const done = rows.filter(r => !r.classList.contains('todo')).length;
+    label.textContent = rows.length ? done + ' / ' + rows.length + ' koupeno' : 'zatím nic';
   });
 
-  const todo = all.filter(r => !r.classList.contains('done')).length;
+  const todo = all.filter(r => r.classList.contains('todo')).length;
   const sub  = document.querySelector('main .pagehead .sub');
   if (sub) {
     sub.textContent = todo
@@ -250,12 +326,10 @@ const actions = {
   /* navigace */
   nav: el => {
     // Z menu se vždy jde na vlastní seznam, ne na naposledy vybrané dítě.
-    if (el.dataset.view === 'mine') state.wardId = null;
-    state.view = el.dataset.view;
-    render();
+    go(el.dataset.view, { wardId: null });
   },
-  openMember: el => { state.memberId = Number(el.dataset.id); state.view = 'member'; render(); },
-  pickList: el => { state.wardId = el.dataset.id ? Number(el.dataset.id) : null; render(); },
+  openMember: el => go('member', { memberId: Number(el.dataset.id) }),
+  pickList: el => go('mine', { wardId: el.dataset.id ? Number(el.dataset.id) : null }),
   switchKind: el => {
     const f = el.closest('form');
     ['account', 'child'].forEach(k => {
@@ -266,7 +340,7 @@ const actions = {
       box.querySelectorAll('input,select').forEach(i => { i.disabled = !on; });
     });
   },
-  adminTab: el => { state.adminTab = el.dataset.tab; render(); },
+  adminTab: el => go('admin', { adminTab: el.dataset.tab }),
   goForgot: () => { state.screen = 'forgot'; render(); },
   goLogin: () => { state.screen = 'login'; render(); },
   closeModal: closeModal,
@@ -359,13 +433,14 @@ const actions = {
     // seznam při odškrtávání poskakoval pod rukama.
     const row = el.closest('.buy');
     const on  = el.checked;
-    row.classList.toggle('done', on);
+    // 'todo' = ještě nekoupeno (zašedlé). Koupené třídu nemá.
+    row.classList.toggle('todo', !on);
     try {
       await Api.setBought(el.dataset.kind, Number(el.dataset.id), on);
       updateShoppingCounts();
     } catch (e) {
       el.checked = !on;
-      row.classList.toggle('done', !on);
+      row.classList.toggle('todo', on);
       toast(e.message, 'bad');
     }
   },
@@ -515,7 +590,11 @@ document.addEventListener('click', ev => {
   const fn = actions[act];
   if (!fn) return;
   if (el.tagName === 'A') return;
-  ev.preventDefault();
+  // U zaškrtávátka by preventDefault() zrušil samotné zaškrtnutí – uložilo
+  // by se správně, ale políčko by se vizuálně vrátilo zpátky.
+  if (el.tagName !== 'INPUT' && el.tagName !== 'SELECT' && el.tagName !== 'TEXTAREA') {
+    ev.preventDefault();
+  }
   fn(el, ev);
 });
 
@@ -642,8 +721,8 @@ const forms = {
         await Api.createGift(payload);
       }
       closeModal();
-      if (state.view !== 'mine' && state.view !== 'admin') state.view = 'mine';
-      await render();
+      if (state.view !== 'mine' && state.view !== 'admin') { go('mine'); }
+      else { await render(); }
       toast('Přání bylo přidáno. 🎁', 'ok');
     }
   },
@@ -709,8 +788,8 @@ const forms = {
       toast('Položka byla přidána. 🛒', 'ok');
     }
     closeModal();
-    if (state.view !== 'shopping') state.view = 'shopping';
-    await render();
+    if (state.view !== 'shopping') { go('shopping'); }
+    else { await render(); }
   },
 
   resetUserPwd: async f => {
