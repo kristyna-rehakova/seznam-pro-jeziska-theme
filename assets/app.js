@@ -719,6 +719,11 @@ const actions = {
 };
 
 document.addEventListener('click', ev => {
+  // Odkaz má přednost před akcí prvku, ve kterém leží. Bez tohohle se klik
+  // na odkaz v kartě propadne na kartu a místo e-shopu se otevře detail –
+  // muselo by se klikat dvakrát.
+  if (ev.target.closest('a[href]')) return;
+
   const el = ev.target.closest('[data-act]');
   if (!el) return;
   const act = el.dataset.act;
@@ -728,7 +733,6 @@ document.addEventListener('click', ev => {
   if (act === 'backdrop' && ev.target !== el) return;
   const fn = actions[act];
   if (!fn) return;
-  if (el.tagName === 'A') return;
   // U zaškrtávátka by preventDefault() zrušil samotné zaškrtnutí – uložilo
   // by se správně, ale políčko by se vizuálně vrátilo zpátky.
   if (el.tagName !== 'INPUT' && el.tagName !== 'SELECT' && el.tagName !== 'TEXTAREA') {
