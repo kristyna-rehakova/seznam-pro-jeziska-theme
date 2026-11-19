@@ -824,6 +824,8 @@ function giftForm(g) {
             ? '<img src="' + esc(v.image) + '" alt="">' : '🎁') + '</span>' +
           '<span class="ctl">' +
             '<button class="btn ghost sm" type="button" data-act="pickImage">📷 Nahrát obrázek</button>' +
+            '<button class="btn ghost sm" type="button" data-act="recrop"' +
+              (v.image ? '' : ' disabled') + '>✂️ Upravit výřez</button>' +
             '<button class="btn ghost sm" type="button" data-act="clearImage">✕ Odebrat obrázek</button>' +
             '<span class="hint">Obrázek jde taky zkopírovat na stránce obchodu ' +
               'a vložit sem přes Ctrl+V.</span>' +
@@ -923,6 +925,30 @@ function resetPwdForm(u) {
     '</form>';
 }
 
+/* ---------- výřez obrázku ----------
+   Obrázky jsou na kartách čtvercové, takže u nahrané fotky je potřeba
+   říct, co z ní má být vidět. */
+function cropDialog() {
+  return '' +
+    '<div class="mhead"><h2>Výřez obrázku</h2>' +
+      '<button class="xbtn" data-act="cancelCrop">✕</button></div>' +
+    '<div class="mbody">' +
+      '<div class="cropstage" data-cropstage><div class="cropimg" data-cropimg></div></div>' +
+      '<div class="zoomrow">' +
+        '<button class="iconbtn" type="button" data-act="cropZoom" data-d="-10">−</button>' +
+        '<input type="range" min="100" max="300" value="100" data-cropzoom ' +
+          'aria-label="Přiblížení">' +
+        '<button class="iconbtn" type="button" data-act="cropZoom" data-d="10">＋</button>' +
+      '</div>' +
+      '<p class="hint center" style="margin-top:10px">Táhni obrázek a nastav přiblížení. ' +
+        'Co je vidět ve čtverci, to se uloží.</p>' +
+    '</div>' +
+    '<div class="mfoot">' +
+      '<button class="btn ghost" data-act="cancelCrop">Zrušit</button>' +
+      '<button class="btn" data-act="applyCrop">Použít</button>' +
+    '</div>';
+}
+
 /* ---------- potvrzovací dialog ---------- */
 function confirmDialog(title, text, okLabel, danger) {
   return '' +
@@ -942,7 +968,7 @@ window.V = {
   mustChangeView: mustChangeView, homeView: homeView, myGiftsView: myGiftsView,
   familyView: familyView, memberView: memberView, profileView: profileView,
   adminView: adminView, giftForm: giftForm, userForm: userForm, resetPwdForm: resetPwdForm,
-  confirmDialog: confirmDialog, giftCard: giftCard, purchaseForm: purchaseForm,
+  confirmDialog: confirmDialog, giftCard: giftCard, purchaseForm: purchaseForm, cropDialog: cropDialog,
   sizesForm: sizesForm, sizeChips: sizeChips, sizeRow: sizeRow, sizesCard: sizesCard,
   shoppingView: shoppingView, giftDetail: giftDetail
 };

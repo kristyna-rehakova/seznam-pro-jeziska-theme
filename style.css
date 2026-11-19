@@ -6,7 +6,7 @@ Primary Branch: main
 Update URI: https://github.com/kristyna-rehakova/seznam-pro-jeziska-theme
 Description: Soukromý rodinný seznam vánočních dárků. Vlastní tabulky pro dárky a rezervace, přihlášení a e-maily přes WordPress. Informace o tom, kdo dárek rezervoval, neopustí server. Nasazení přes Git Updater.
 Author: Seznam pro Ježíška
-Version: 0.6.0
+Version: 0.7.0
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
@@ -171,9 +171,14 @@ main{max-width:1080px; margin:0 auto; padding:20px 16px calc(var(--nav-h) + 32px
 .gift:hover{border-color:var(--gold-line); transform:translateY(-2px);
   box-shadow:0 4px 16px rgba(30,35,46,.11)}
 .gift:focus-visible{outline:2px solid var(--red); outline-offset:2px}
-.gift .pic{position:relative; aspect-ratio:4/3; background:var(--paper-2); border-bottom:1px solid var(--line);
+/* Čtverec. min-height:0 a absolutní obrázek jsou nutné: jako běžný prvek
+   si <img> prosadí svoji vlastní výšku a vysoké fotky (třeba screenshot
+   z mobilu) pak kartu nafouknou navzdory aspect-ratio. */
+.gift .pic{position:relative; aspect-ratio:1/1; min-height:0; overflow:hidden;
+  background:var(--paper-2); border-bottom:1px solid var(--line);
   display:flex; align-items:center; justify-content:center; font-size:2.6rem; color:#D8D3CC}
-.gift .pic img{width:100%; height:100%; object-fit:cover; display:block}
+.gift .pic img{position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; display:block}
 .gift .body{padding:14px 15px 15px; display:flex; flex-direction:column; gap:9px; flex:1}
 .gift h3{font-size:1.06rem; line-height:1.3}
 .gift .note{color:var(--muted); font-size:.88rem; white-space:pre-wrap}
@@ -380,10 +385,21 @@ main{max-width:1080px; margin:0 auto; padding:20px 16px calc(var(--nav-h) + 32px
 .modal .mfoot.wrap .btn{flex:1 1 130px}
 
 /* ---------- detail dárku ---------- */
-.dpic{width:100%; aspect-ratio:4/3; margin-bottom:14px; border:1px solid var(--line);
-  border-radius:14px; overflow:hidden; background:var(--paper-2);
+.dpic{position:relative; width:100%; aspect-ratio:1/1; min-height:0; margin-bottom:14px;
+  border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--paper-2);
   display:flex; align-items:center; justify-content:center; font-size:3rem; color:#D8D3CC}
-.dpic img{width:100%; height:100%; object-fit:cover; display:block}
+.dpic img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block}
+
+/* ---------- výřez obrázku ---------- */
+.cropstage{position:relative; width:100%; max-width:320px; aspect-ratio:1/1; margin:0 auto;
+  background:var(--paper-2); border:1px solid var(--line); border-radius:14px;
+  overflow:hidden; touch-action:none; user-select:none; cursor:grab}
+.cropstage.dragging{cursor:grabbing}
+.cropimg{position:absolute; inset:0; background-repeat:no-repeat}
+.zoomrow{display:flex; align-items:center; gap:10px; margin:14px auto 0; max-width:320px}
+.zoomrow input[type=range]{flex:1; min-height:0; padding:0; border:none;
+  accent-color:var(--red); cursor:pointer}
+.zoomrow .iconbtn{flex:0 0 auto; font-size:1.2rem; font-weight:700}
 .dname{font-size:1.35rem; line-height:1.25; margin:8px 0 10px}
 .drow{display:flex; gap:12px; align-items:baseline; padding:11px 0; border-top:1px solid var(--line)}
 .drow .dl{flex:0 0 84px; font-size:.78rem; font-weight:700; color:var(--muted);

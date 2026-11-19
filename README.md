@@ -107,6 +107,17 @@ počítadla — jinak by seznam při odškrtávání poskakoval pod rukama.
 
 ---
 
+## Obrázky
+
+Na kartách jsou obrázky čtvercové. Nahraná fotka projde dialogem výřezu
+(táhnutí + přiblížení), výsledek je 800×800 JPEG. Stejnou cestou jde
+znovu seříznout už vybraný obrázek i obrázek vložený ze schránky.
+
+Pozor na jednu past v CSS: `.gift .pic` potřebuje `min-height:0` a obrázek
+uvnitř `position:absolute`. Jako běžný prvek si `<img>` prosadí svoji
+vlastní výšku a vysoké fotky kartu nafouknou navzdory `aspect-ratio`.
+---
+
 ## Tabulka velikostí
 
 Každý profil má volitelnou tabulku velikostí — dvojice *co → velikost*

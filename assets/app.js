@@ -45,12 +45,34 @@ function fields(form) {
   });
   return o;
 }
+/* Dialogy se vrství. Dřív každý další přepsal ten předchozí, takže když
+   se nad formulářem dárku otevřel výřez obrázku, formulář i s rozepsanými
+   údaji zmizel. Spodní dialog se teď jen schová a po zavření vrchního se
+   vrátí i s tím, co v něm bylo napsané. */
 function openModal(html) {
-  modalRoot.innerHTML = '<div class="modal-back" data-act="backdrop"><div class="modal">' +
-    html + '</div></div>';
+  const prev = modalRoot.lastElementChild;
+  if (prev) prev.style.display = 'none';
+
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  back.dataset.act = 'backdrop';
+  back.innerHTML = '<div class="modal">' + html + '</div>';
+  modalRoot.appendChild(back);
   document.body.style.overflow = 'hidden';
 }
+
+/** Zavře vrchní dialog a odkryje ten pod ním. */
 function closeModal() {
+  const top = modalRoot.lastElementChild;
+  if (top) top.remove();
+  const prev = modalRoot.lastElementChild;
+  if (prev) prev.style.display = '';
+  else document.body.style.overflow = '';
+  state.pendingConfirm = null;
+}
+
+/** Zavře všechny dialogy – používá se, když je akce dotažená do konce. */
+function closeAll() {
   modalRoot.innerHTML = '';
   document.body.style.overflow = '';
   state.pendingConfirm = null;
@@ -70,23 +92,119 @@ function pickImageFile(onDone) {
     if (!f) return;
     if (f.size > 12 * 1024 * 1024) { toast('Obrázek je moc velký (max 12 MB).', 'bad'); return; }
     const fr = new FileReader();
-    fr.onload = () => shrink(fr.result, 900, onDone);
+    fr.onload = () => openCrop(fr.result, onDone);
     fr.readAsDataURL(f);
   };
   inp.click();
 }
-function shrink(dataUrl, maxSide, onDone) {
+/* ---------- výřez do čtverce ----------
+   Karty mají obrázky čtvercové, takže u fotky je potřeba říct, co z ní
+   má zůstat. Výsledek je vždycky 800×800 JPEG. */
+const CROP_OUT = 800;
+let crop = null;   // { img, stage, zoom, x, y, base, onDone }
+
+function openCrop(src, onDone) {
   const img = new Image();
   img.onload = () => {
-    const sc = Math.min(1, maxSide / Math.max(img.width, img.height));
-    const c = document.createElement('canvas');
-    c.width = Math.round(img.width * sc);
-    c.height = Math.round(img.height * sc);
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    onDone(c.toDataURL('image/jpeg', 0.82));
+    openModal(V.cropDialog());
+    const stageEl = document.querySelector('[data-cropstage]');
+    const size = stageEl.clientWidth;
+
+    crop = { img: img, stage: size, zoom: 1, x: 0, y: 0, onDone: onDone,
+             base: Math.max(size / img.naturalWidth, size / img.naturalHeight) };
+    centerCrop();
+    drawCrop();
+    bindCropDrag(stageEl);
   };
   img.onerror = () => toast('Obrázek se nepodařilo načíst.', 'bad');
-  img.src = dataUrl;
+  img.src = src;
+}
+
+function cropScale() { return crop.base * crop.zoom; }
+
+function centerCrop() {
+  const s = cropScale();
+  crop.x = (crop.stage - crop.img.naturalWidth * s) / 2;
+  crop.y = (crop.stage - crop.img.naturalHeight * s) / 2;
+}
+
+/* Obrázek musí čtverec vždy celý pokrýt – nesmí vzniknout prázdný okraj. */
+function clampCrop() {
+  const s = cropScale();
+  const w = crop.img.naturalWidth * s;
+  const h = crop.img.naturalHeight * s;
+  crop.x = Math.min(0, Math.max(crop.stage - w, crop.x));
+  crop.y = Math.min(0, Math.max(crop.stage - h, crop.y));
+}
+
+function drawCrop() {
+  clampCrop();
+  const s = cropScale();
+  const el = document.querySelector('[data-cropimg]');
+  if (!el) return;
+  el.style.backgroundImage = 'url("' + crop.img.src.replace(/"/g, '\\"') + '")';
+  el.style.backgroundSize = (crop.img.naturalWidth * s) + 'px ' +
+                            (crop.img.naturalHeight * s) + 'px';
+  el.style.backgroundPosition = crop.x + 'px ' + crop.y + 'px';
+}
+
+function bindCropDrag(stageEl) {
+  let last = null;
+  stageEl.addEventListener('pointerdown', ev => {
+    last = { x: ev.clientX, y: ev.clientY };
+    stageEl.classList.add('dragging');
+    stageEl.setPointerCapture(ev.pointerId);
+  });
+  stageEl.addEventListener('pointermove', ev => {
+    if (!last || !crop) return;
+    crop.x += ev.clientX - last.x;
+    crop.y += ev.clientY - last.y;
+    last = { x: ev.clientX, y: ev.clientY };
+    drawCrop();
+  });
+  const end = () => { last = null; stageEl.classList.remove('dragging'); };
+  stageEl.addEventListener('pointerup', end);
+  stageEl.addEventListener('pointercancel', end);
+}
+
+/** Zoomuje kolem středu čtverce, ať se obraz „neutrhne" ke kraji. */
+function setCropZoom(pct) {
+  const z = Math.min(3, Math.max(1, pct / 100));
+  const before = cropScale();
+  const cx = (crop.stage / 2 - crop.x) / before;
+  const cy = (crop.stage / 2 - crop.y) / before;
+  crop.zoom = z;
+  const after = cropScale();
+  crop.x = crop.stage / 2 - cx * after;
+  crop.y = crop.stage / 2 - cy * after;
+  drawCrop();
+  const slider = document.querySelector('[data-cropzoom]');
+  if (slider) slider.value = Math.round(z * 100);
+}
+
+function finishCrop() {
+  const s = cropScale();
+  const c = document.createElement('canvas');
+  c.width = c.height = CROP_OUT;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, CROP_OUT, CROP_OUT);
+  // Výsek z původního obrázku, který právě vyplňuje čtverec na obrazovce.
+  ctx.drawImage(crop.img,
+    -crop.x / s, -crop.y / s, crop.stage / s, crop.stage / s,
+    0, 0, CROP_OUT, CROP_OUT);
+
+  let data;
+  try {
+    data = c.toDataURL('image/jpeg', 0.85);
+  } catch (e) {
+    toast('Tenhle obrázek nejde upravit, zkus ho nahrát ze souboru.', 'bad');
+    return;
+  }
+  const done = crop.onDone;
+  crop = null;
+  closeModal();
+  done(data);
 }
 
 /* ---------- render ---------- */
@@ -212,7 +330,7 @@ function go(view, opts) {
 
 window.addEventListener('hashchange', () => {
   if (state.screen !== 'app') return;
-  closeModal();                 // modál v adrese není, zpět ho musí zavřít
+  closeAll();                 // modál v adrese není, zpět ho musí zavřít
   if (!applyHash()) { go('mine'); return; }
   render();
 });
@@ -265,6 +383,13 @@ async function giftList() {
 }
 async function findGift(id) {
   return (await giftList()).find(x => x.id === Number(id)) || null;
+}
+
+function setGiftImage(form, data) {
+  form.elements.image.value = data;
+  form.querySelector('[data-imgprev]').innerHTML = '<img src="' + V.esc(data) + '" alt="">';
+  const btn = form.querySelector('[data-act="recrop"]');
+  if (btn) btn.disabled = false;
 }
 
 /* Lidé, pro které jde zapsat vlastní položku: celá rodina včetně dětí. */
@@ -371,12 +496,12 @@ const actions = {
       async () => {
         try {
           await Api.deleteGift(id);
-          closeModal();
+          closeAll();
           await render();
           // Vlastník dostane neutrální hlášku — nesmí z ní poznat,
           // jestli byl dárek rezervovaný a jestli odešel e-mail.
           toast('Dárek byl smazán.', 'ok');
-        } catch (e) { closeModal(); toast(e.message, 'bad'); }
+        } catch (e) { closeAll(); toast(e.message, 'bad'); }
       });
   },
   setPrio: el => {
@@ -387,15 +512,29 @@ const actions = {
   },
   pickImage: el => {
     const form = el.closest('form');
-    pickImageFile(data => {
-      form.elements.image.value = data;
-      form.querySelector('[data-imgprev]').innerHTML = '<img src="' + V.esc(data) + '" alt="">';
-    });
+    pickImageFile(data => setGiftImage(form, data));
+  },
+  /* Znovu nastavit výřez u obrázku, který už je vybraný. */
+  recrop: el => {
+    const form = el.closest('form');
+    const src = form.elements.image.value;
+    if (!src) { toast('Nejdřív vyber obrázek.', 'bad'); return; }
+    openCrop(src, data => setGiftImage(form, data));
   },
   clearImage: el => {
     const form = el.closest('form');
     form.elements.image.value = '';
     form.querySelector('[data-imgprev]').innerHTML = '🎁';
+    const btn = form.querySelector('[data-act="recrop"]');
+    if (btn) btn.disabled = true;
+  },
+
+  /* výřez */
+  cancelCrop: () => { crop = null; closeModal(); },
+  applyCrop: () => { if (crop) finishCrop(); },
+  cropZoom: el => {
+    if (!crop) return;
+    setCropZoom(Math.round(crop.zoom * 100) + Number(el.dataset.d));
   },
   fetchPreview: async el => {
     const form = el.closest('form');
@@ -477,9 +616,9 @@ const actions = {
       'Smazat', true, async () => {
         try {
           await Api.deletePurchase(id);
-          closeModal(); await render();
+          closeAll(); await render();
           toast('Položka byla smazána.', 'ok');
-        } catch (e) { closeModal(); toast(e.message, 'bad'); }
+        } catch (e) { closeAll(); toast(e.message, 'bad'); }
       });
   },
 
@@ -490,9 +629,9 @@ const actions = {
       async () => {
         try {
           await Api.reserve(id);
-          closeModal(); await render();
+          closeAll(); await render();
           toast('Dárek je rezervovaný pro tebe. 🎁', 'ok');
-        } catch (e) { closeModal(); toast(e.message, 'bad'); await render(); }
+        } catch (e) { closeAll(); toast(e.message, 'bad'); await render(); }
       });
   },
   cancelReserve: el => {
@@ -501,9 +640,9 @@ const actions = {
       'Zrušit rezervaci', true, async () => {
         try {
           await Api.cancelReservation(id);
-          closeModal(); await render();
+          closeAll(); await render();
           toast('Rezervace byla zrušena.', 'ok');
-        } catch (e) { closeModal(); toast(e.message, 'bad'); }
+        } catch (e) { closeAll(); toast(e.message, 'bad'); }
       });
   },
   adminCancelReserve: el => {
@@ -512,9 +651,9 @@ const actions = {
       'Zrušit rezervaci', true, async () => {
         try {
           await Api.adminCancelReservation(id);
-          closeModal(); await render();
+          closeAll(); await render();
           toast('Rezervace byla zrušena.', 'ok');
-        } catch (e) { closeModal(); toast(e.message, 'bad'); }
+        } catch (e) { closeAll(); toast(e.message, 'bad'); }
       });
   },
 
@@ -570,9 +709,9 @@ const actions = {
       'Smazat', true, async () => {
         try {
           await Api.adminDeleteUser(u.id);
-          closeModal(); await render();
+          closeAll(); await render();
           toast('Účet byl smazán.', 'ok');
-        } catch (e) { closeModal(); toast(e.message, 'bad'); }
+        } catch (e) { closeAll(); toast(e.message, 'bad'); }
       });
   },
 
@@ -617,7 +756,9 @@ function filterEmoji(pop, query) {
 
 document.addEventListener('input', ev => {
   const s = ev.target.closest && ev.target.closest('[data-emojisearch]');
-  if (s) filterEmoji(s.closest('[data-emojipop]'), s.value);
+  if (s) { filterEmoji(s.closest('[data-emojipop]'), s.value); return; }
+  const z = ev.target.closest && ev.target.closest('[data-cropzoom]');
+  if (z && crop) setCropZoom(Number(z.value));
 });
 
 /* Obrázek vložený ze schránky (Ctrl+V) — záchrana u e-shopů, které
@@ -632,9 +773,11 @@ document.addEventListener('paste', ev => {
       if (!file) continue;
       ev.preventDefault();
       const fr = new FileReader();
-      fr.onload = () => shrink(fr.result, 900, data => {
+      fr.onload = () => openCrop(fr.result, data => {
         form.elements.image.value = data;
         form.querySelector('[data-imgprev]').innerHTML = '<img src="' + V.esc(data) + '" alt="">';
+        const btn = form.querySelector('[data-act="recrop"]');
+        if (btn) btn.disabled = false;
         toast('Obrázek vložen ze schránky. 📋', 'ok');
       });
       fr.readAsDataURL(file);
@@ -710,7 +853,7 @@ const forms = {
     };
     if (f.dataset.id) {
       await Api.updateGift(Number(f.dataset.id), payload);
-      closeModal(); await render();
+      closeAll(); await render();
       // Neutrální hláška: vlastník se nesmí dozvědět, že šel e-mail rezervujícímu.
       toast('Dárek byl upraven.', 'ok');
     } else {
@@ -720,7 +863,7 @@ const forms = {
       } else {
         await Api.createGift(payload);
       }
-      closeModal();
+      closeAll();
       if (state.view !== 'mine' && state.view !== 'admin') { go('mine'); }
       else { await render(); }
       toast('Přání bylo přidáno. 🎁', 'ok');
@@ -747,7 +890,7 @@ const forms = {
         ? 'Dětský profil byl vytvořen. 🧒'
         : 'Účet vytvořen, poslali jsme na e-mail pozvánku. Heslo předej zvlášť.', 'ok');
     }
-    closeModal();
+    closeAll();
     await refreshUser();
     await render();
   },
@@ -760,7 +903,7 @@ const forms = {
     const res = await Api.setSizes(Number(f.dataset.id), rows);
 
     if (f.closest('#modalRoot')) {
-      closeModal();
+      closeAll();
       await render();
     } else {
       // V profilu stránku nepřekreslujeme, jen srovnáme řádky podle
@@ -787,7 +930,7 @@ const forms = {
       await Api.createPurchase(payload);
       toast('Položka byla přidána. 🛒', 'ok');
     }
-    closeModal();
+    closeAll();
     if (state.view !== 'shopping') { go('shopping'); }
     else { await render(); }
   },
@@ -795,7 +938,7 @@ const forms = {
   resetUserPwd: async f => {
     const d = fields(f);
     await Api.adminResetPassword(Number(f.dataset.id), d.tempPassword);
-    closeModal(); await render();
+    closeAll(); await render();
     toast('Heslo bylo resetováno na dočasné.', 'ok');
   }
 };
